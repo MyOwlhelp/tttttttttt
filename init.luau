@@ -1,18 +1,9 @@
---!native
-local _VERSION = "1.0.0"
-local ProcessID = "%-PROCESS-ID-%"
-local BridgeUrl = "http://localhost:9611"
+print("Loading!")
 
 local cg = game:GetService("CoreGui")
 local hs = game:GetService("HttpService")
 local is = game:GetService("InsertService")
 local ps = game:GetService("Players")
-
-local oParent = script.Parent
-
-local oPrint = print
-local oWarn = warn
-local oError = error
 
 local ExternalExecutor = Instance.new("Folder", cg)
 ExternalExecutor.Name = "ExternalExecutor"
@@ -30,24 +21,9 @@ local ms = rs:FindFirstChild("Modules")
 local cm = ms:FindFirstChild("Common")
 local Load = cm:FindFirstChild("CommonUtil")
 
-local cclosures = setmetatable({}, { __mode = "k" })
-
-local readonlyMap = setmetatable({}, { __mode = "k" })
-local scriptableTable = setmetatable({}, { __mode = "k" })
-local cachedInstances = setmetatable({}, { __mode = "k" })
-local callbackStore = setmetatable({}, { __mode = "k" })
-local raw_metas = setmetatable({}, { __mode = "k" })
-local instanceProperties = setmetatable({}, { __mode = "k" })
-local fakeUpvalueCache = setmetatable({}, { __mode = "k" })
-
-local clock = 0
-local fpscap = math.huge
-
-local hasConsole = false
-
-local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-
-local Vernushwd = "Luma-HWID-" .. plr.UserId
+local BridgeUrl = "http://localhost:9611"
+local ProcessID = "%-PROCESS-ID-%"
+local Vernushwd = "ExternalExecutor-HWID-" .. plr.UserId
 
 local resc = 3
 local function nukedata(dta, typ, set)
@@ -90,367 +66,36 @@ local function nukedata(dta, typ, set)
 	return result and result.Body or ""
 end
 
-local function BASE64ENCODE(data)
-	return nukedata("", "_encode_base64", {
-		["to_encode"] = data
-	})
-end
-
-local function BASE64DECODE(data)
-	return nukedata("", "_decode_base64", {
-		["to_decode"] = data
-	})
-end
-
-local function doOutput(t, ...)
-	local args = {...}
-	for i = 1, #args do
-		args[i] = tostring(args[i])
-	end
-	nukedata("", "output", {msg = table.concat(args, "\t"), type = t})
-end
-
-local function doInfo(...)
-	doOutput("info", ...)
-end
-
 local env = getfenv(function() end)
-
-env.print = function(...)
-	doOutput("print", ...)
-	return oPrint(...)
-end
-
-env.warn = function(...)
-	doOutput("warn", ...)
-	return oWarn(...)
-end
-
-env.error = function(...)
-	doOutput("error", ...)
-	return oError(...)
-end
-
-doInfo("Loading Environment...")
-
-cclosures[env.print] = true
-cclosures[env.warn] = true
-cclosures[env.error] = true
 
 env.getgenv = function()
 	return env
 end
 
-env.getexecutorname = function()
-	return "Luma"
-end
-
 env.identifyexecutor = function()
-	return env.getexecutorname(), _VERSION
+	return "ExternalExecutor", "1.0.1"
 end
+env.getexecutorname = env.identifyexecutor
 
-env.compile = function(code : string, encoded : boolean)
+env.compile = function(code : string, encoded : bool)
 	local code = typeof(code) == "string" and code or ""
 	local encoded = typeof(encoded) == "boolean" and encoded or false
 	local res = nukedata(code, "compile", {
-		enc = tostring(encoded),
-		to_compile = BASE64ENCODE(code)
+		["enc"] = tostring(encoded)
 	})
 	return res or ""
 end
 
-env.setclipboard = function(text : string)
-	return nukedata("", "setclipboard", {
-		["txt"] = BASE64ENCODE(text or "")
-	})
-end
-env.toclipboard = env.setclipboard
-env.setrbxclipboard = env.setclipboard
-
-env.setfpscap = function(cap)
-	cap = tonumber(cap)
-	assert(type(cap) == "number", "invalid argument #1 to 'setfpscap' (number expected, got " .. type(cap) .. ")", 2)
-
-	if cap < 1 then
-		fpscap = math.huge
-	else
-		fpscap = cap
-	end
-end
-
-env.getfpscap = function()
-	return fpscap
-end
-
-env.setscriptbytecode = function(script: Instance, bytecode: string, raw: boolean)
+env.setscriptbytecode = function(script : Instance, bytecode : string)
 	local obj = Instance.new("ObjectValue", Pointer)
 	obj.Name = hs:GenerateGUID(false)
 	obj.Value = script
 
-	nukedata(BASE64ENCODE(bytecode), "setscriptbytecode", {
-		cn = obj.Name,
-		raw = raw or false
+	nukedata(bytecode, "setscriptbytecode", {
+		["cn"] = obj.Name
 	})
 
 	obj:Destroy()
-end
-
-env.getscriptbytecode = function(script: Instance)
-	assert(script:IsA("LuaSourceContainer"), "getscriptbytecode expected LuaSourceContainer")
-
-	local obj = Instance.new("ObjectValue")
-	obj.Name = hs:GenerateGUID(false)
-	obj.Value = script
-	obj.Parent = Pointer
-
-	local bytecode = nukedata("", "getscriptbytecode", {
-		sc = obj.Name
-	})
-
-	task.defer(function()
-		obj:Destroy()
-	end)
-
-	return bytecode
-end
-
-env.dumpstring = env.getscriptbytecode
-
---[[env.decompile = function(script: LuaSourceContainer)
-	-- doesn't have decompile yet
-	assert(script:IsA("LuaSourceContainer"), "decompile expected LuaSourceContainer")
-	return env.getscriptbytecode(script)
-end]]
-
-env.lz4compress = function(content: string)
-	assert(type(content) == "string", "lz4compress expected string")
-
-	local compressed = nukedata("", "lz4compress", {
-		yea = BASE64ENCODE(content)
-	})
-
-	return compressed
-end
-
-env.lz4decompress = function(compressed: string, originalSize: number)
-	assert(type(compressed) == "string", "lz4decompress expected string")
-	assert(type(originalSize) == "number", "lz4decompress expected original size")
-
-	local decompressed = nukedata("", "lz4decompress", {
-		compressed_yea = BASE64ENCODE(compressed),
-		size_yea = originalSize
-	})
-
-	return decompressed
-end
-
-env.rconsolecreate = function()
-	if hasConsole then return end
-	hasConsole = true
-	nukedata("", "rconsolecreate", {})
-end
-
-env.rconsoledestroy = function()
-	if not hasConsole then return end
-	hasConsole = false
-	nukedata("", "rconsoledestroy", {})
-end
-
-env.rconsoleclear = function()
-	if not hasConsole then return end
-	nukedata("", "rconsoleclear", {})
-end
-
-env.rconsoleprint = function(message: string)
-	assert(type(message) == "string", "rconsoleprint expected string message")
-	if not hasConsole then
-		env.rconsolecreate()
-	end
-	task.wait()
-	nukedata("", "rconsoleprint", {
-		msg = message
-	})
-end
-
-env.rconsoleinput = function()
-	if not hasConsole then
-		env.rconsolecreate()
-	end
-	task.wait()
-	return nukedata("", "rconsoleinput", {})
-end
-
-env.rconsolesettitle = function(title: string)
-	assert(type(title) == "string", "rconsolesettitle expected string message")
-	if not hasConsole then
-		env.rconsolecreate()
-	end
-	task.wait()
-	nukedata("", "rconsolesettitle", {
-		t = title
-	})
-end
-
-env.rconsolename = env.rconsolesettitle
-env.consolesettitle = env.rconsolesettitle
-env.consoleclear = env.rconsoleclear
-env.consolecreate = env.rconsolecreate
-env.consoledestroy = env.rconsoledestroy
-env.consoleinput = env.rconsoleinput
-env.consoleprint = env.rconsoleprint
-
--- readfile: sends key "p", returns raw string
-env.readfile = function(path)
-	assert(type(path) == "string", "readfile expected string path")
-	assert(isfile(path), "readfile expected an existed file")
-
-	local result = nukedata("", "readfile", {
-		p = path
-	})
-
-	-- result is a string (file contents) or "" on error
-	return result
-end
-
--- writefile: send path as "p", content as "c"
-env.writefile = function(path, data)
-	assert(type(path) == "string", "writefile expected string path")
-	--assert(type(data) == "string", "writefile expected string data")
-
-	data = data or ""
-
-	local result = nukedata("", "writefile", {
-		p = path,
-		c = BASE64ENCODE(data)
-	})
-
-	-- returns "" on success, or "error: ..." on failure
-	return result
-end
-
--- appendfile: send path as "p", content as "c"
-env.appendfile = function(path, data)
-	assert(type(path) == "string", "appendfile expected string path")
-	assert(isfile(path), "appendfile expected an existed file")
-
-	--assert(type(data) == "string", "appendfile expected string data")
-
-	data = data or ""
-
-	local result = nukedata("", "appendfile", {
-		p = path,
-		c = BASE64ENCODE(data)
-	})
-
-	return result
-end
-
--- isfile: send "p", check returned string ("true" or "false")
-env.isfile = function(path)
-	assert(type(path) == "string", "isfile expected string path")
-
-	local result = nukedata("", "isfile", {
-		p = path
-	})
-
-	-- C++ returns "true" or "false" (strings). Compare to "true"
-	return result == "true"
-end
-
--- isfolder: same as isfile
-env.isfolder = function(path)
-	assert(type(path) == "string", "isfolder expected string path")
-
-	local result = nukedata("", "isfolder", {
-		p = path
-	})
-
-	return result == "true"
-end
-
--- makefolder: use "p"
-env.makefolder = function(path)
-	assert(type(path) == "string", "makefolder expected string path")
-
-	local result = nukedata("", "makefolder", {
-		p = path
-	})
-
-	return result
-end
-
--- delfile/delfolder: keep as-is but use "p"
-env.delfile = function(path)
-	assert(type(path) == "string", "delfile expected string path")
-	assert(isfile(path), "delfile expected an existed file")
-
-	local result = nukedata("", "delfile", {
-		p = path
-	})
-
-	return result
-end
-
-env.delfolder = function(path)
-	assert(type(path) == "string", "delfolder expected string path")
-	assert(isfolder(path), "delfolder expected an existed folder")
-
-	local result = nukedata("", "delfolder", {
-		p = path
-	})
-
-	return result
-end
-
--- listfiles/listfolders: use "p" and return JSON string
-env.listfiles = function(path: string)
-	--assert(type(path) == "string", "listfiles expected string")
-
-	local result = nukedata("", "listfiles", {
-		p = (path or "default")
-	})
-
-	return hs:JSONDecode(result) -- should be array/table
-end
-
-env.listfolders = function(path)
-	assert(type(path) == "string", "listfolders expected string path")
-
-	local result = nukedata("", "listfolders", {
-		p = path
-	})
-
-	return result
-end
-
--- loadfile/dofile: they call readfile internally, so make sure readfile sends "p"
-env.loadfile = function(path)
-	assert(type(path) == "string", "loadfile expected string path")
-
-	local source = nukedata("", "readfile", {
-		p = path
-	})
-
-	if not source or source == "" then
-		error("loadfile: file not found or empty: " .. path)
-	end
-
-	return env.loadstring(source)
-end
-
-env.dofile = function(path)
-	assert(type(path) == "string", "dofile expected string path")
-
-	local chunk = env.loadfile(path)
-	return chunk()
-end
-
-env.getcustomasset = function(path)
-	assert(type(path) == "string", "getcustomasset expected string path")
-
-	return nukedata("", "getcustomasset", {
-		p = path
-	})
 end
 
 local clonerefs = {}
@@ -493,27 +138,10 @@ env.compareinstances = function(proxy1, proxy2)
 	return proxy1 == proxy2
 end
 
-local function GenerateName()
-	local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	local name = {}
-
-	for i = 1, 10 do
-		local randIndex = math.random(1, #chars)
-		name[i] = string.sub(chars, randIndex, randIndex)
-	end
-
-	return table.concat(name)
-end
-
 env.loadstring = function(code, chunkname)
 	assert(type(code) == "string", "invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ") ", 2)
-	local name = "Luma" -- GenerateName()
-	if type(chunkname) == "boolean" then
-		chunkname = name
-	else
-		chunkname = chunkname or name
-	end
-	--assert(type(chunkname) == "string", "invalid argument #2 to 'loadstring' (string expected, got " .. type(chunkname) .. ") ", 2)
+	chunkname = chunkname or "loadstring"
+	assert(type(chunkname) == "string", "invalid argument #2 to 'loadstring' (string expected, got " .. type(chunkname) .. ") ", 2)
 	chunkname = chunkname:gsub("[^%a_]", "")
 	if (code == "" or code == " ") then
 		return nil, "Empty script source"
@@ -524,7 +152,7 @@ env.loadstring = function(code, chunkname)
 		return nil, "Compile Failed!"
 	end
 
-	env.setscriptbytecode(Load, bytecode, true)
+	env.setscriptbytecode(Load, bytecode)
 
 	local suc, res = pcall(function()
 		return debug.loadmodule(Load)
@@ -545,435 +173,224 @@ env.loadstring = function(code, chunkname)
 end
 
 local supportedMethods = {"GET", "POST", "PUT", "DELETE", "PATCH"}
-
-env.http = {}
-
 env.request = function(options)
-	assert(type(options) == "table",
-		"invalid argument #1 to 'request' (table expected, got " .. type(options) .. ")", 2)
-
-	assert(type(options.Url) == "string",
-		"invalid option 'Url' for argument #1 to 'request' (string expected, got " .. type(options.Url) .. ")", 2)
-
-	-- Normalize method
-	options.Method = options.Method and options.Method:upper() or "GET"
-	assert(table.find(supportedMethods, options.Method),
-		"invalid option 'Method' for argument #1 to 'request' (valid http method expected, got '" .. tostring(options.Method) .. "')", 2)
-
-	-- GET cannot have Body
-	if options.Method == "GET" then
-		assert(not options.Body,
-			"invalid option 'Body' for argument #1 to 'request' (GET method cannot use Body)", 2)
+	assert(type(options) == "table", "invalid argument #1 to 'request' (table expected, got " .. type(options) .. ") ", 2)
+	assert(type(options.Url) == "string", "invalid option 'Url' for argument #1 to 'request' (string expected, got " .. type(options.Url) .. ") ", 2)
+	options.Method = options.Method or "GET"
+	options.Method = options.Method:upper()
+	assert(table.find(supportedMethods, options.Method), "invalid option 'Method' for argument #1 to 'request' (a valid http method expected, got '" .. options.Method .. "') ", 2)
+	assert(not (options.Method == "GET" and options.Body), "invalid option 'Body' for argument #1 to 'request' (current method is GET but option 'Body' was used)", 2)
+	if options.Body then
+		assert(type(options.Body) == "string", "invalid option 'Body' for argument #1 to 'request' (string expected, got " .. type(options.Body) .. ") ", 2)
+		assert(pcall(function() hs:JSONDecode(options.Body) end), "invalid option 'Body' for argument #1 to 'request' (invalid json string format)", 2)
 	end
-
-	-- Validate Body only IF provided
-	if options.Body ~= nil then
-		assert(type(options.Body) == "string",
-			"invalid option 'Body' for argument #1 to 'request' (string expected, got " .. type(options.Body) .. ")", 2)
-
-		-- Only check JSON if Content-Type is JSON
-		local contentType = options.Headers and options.Headers["Content-Type"]
-
-		if contentType == "application/json" then
-			assert(pcall(function() hs:JSONDecode(options.Body) end), "invalid option 'Body' for argument #1 to 'request' (invalid JSON format)", 2)
-		end
-	end
-
-	-- Validate Headers
-	if options.Headers then
-		assert(type(options.Headers) == "table",
-			"invalid option 'Headers' for argument #1 to 'request' (table expected, got " .. type(options.Headers) .. ")", 2)
-	else
-		options.Headers = {}
-	end
-
-	-- Automatic headers
-	if options.Headers["User-Agent"] then
-		assert(type(options.Headers["User-Agent"]) == "string",
-			"invalid option 'User-Agent' for argument #1 to 'request.Headers' (string expected, got "
-				.. type(options.Headers["User-Agent"]) .. ")", 2)
-	end
-
-	local n,v = env.identifyexecutor()
-
-	options.Headers["User-Agent"] = n.."/"..v
-	options.Headers["Luma-Fingerprint"] = Vernushwd
+	if options.Headers then assert(type(options.Headers) == "table", "invalid option 'Headers' for argument #1 to 'request' (table expected, got " .. type(options.Url) .. ") ", 2) end
+	options.Body = options.Body or "{}"
+	options.Headers = options.Headers or {}
+	if (options.Headers["User-Agent"]) then assert(type(options.Headers["User-Agent"]) == "string", "invalid option 'User-Agent' for argument #1 to 'request.Header' (string expected, got " .. type(options.Url) .. ") ", 2) end
+	options.Headers["User-Agent"] = options.Headers["User-Agent"] or "ExternalExecutor/1.0.1"
+	options.Headers["ExternalExecutor-Fingerprint"] = Vernushwd
 	options.Headers["Cache-Control"] = "no-cache"
 	options.Headers["Roblox-Place-Id"] = tostring(game.PlaceId)
 	options.Headers["Roblox-Game-Id"] = tostring(game.JobId)
 	options.Headers["Roblox-Session-Id"] = hs:JSONEncode({
-		GameId = tostring(game.GameId),
-		PlaceId = tostring(game.PlaceId)
+		["GameId"] = tostring(game.GameId),
+		["PlaceId"] = tostring(game.PlaceId)
 	})
-
-	-- Use "{}" only if body empty AND content-type is JSON
-	if options.Body == nil then
-		if options.Headers["Content-Type"] == "application/json" then
-			options.Body = "{}"
-		else
-			options.Body = ""
-		end
-	end
-
-	-- Perform backend request
 	local res = nukedata("", "request", {
-		l = BASE64ENCODE(options.Url),
-		m = BASE64ENCODE(options.Method),
-		h = options.Headers,
-		b = BASE64ENCODE(options.Body)
+		['l'] = options.Url,
+		['m'] = options.Method,
+		['h'] = options.Headers,
+		['b'] = options.Body or "{}"
 	})
-
 	if res then
 		local result = hs:JSONDecode(res)
-
-		if result.r ~= "OK" then
-			result.r = "Unknown"
+		if result['r'] ~= "OK" then
+			result['r'] = "Unknown"
 		end
-
 		return {
-			Success = tonumber(result.c) and tonumber(result.c) >= 200 and tonumber(result.c) < 300,
-			StatusMessage = result.r,
-			StatusCode = tonumber(result.c),
-			Body = result.b,
-			HttpError = Enum.HttpError[result.r],
-			Headers = result.h,
-			Version = result.v
+			Success = tonumber(result['c']) and tonumber(result['c']) > 200 and tonumber(result['c']) < 300,
+			StatusMessage = result['r'],
+			StatusCode = tonumber(result['c']),
+			Body = result['b'],
+			HttpError = Enum.HttpError[result['r']],
+			Headers = result['h'],
+			Version = result['v']
 		}
 	end
-
 	return {
 		Success = false,
-		StatusMessage = "Can't connect to Luma Executor web server!",
-		StatusCode = 599,
+		StatusMessage = "Can't connect to ExternalExecutor web server!",
+		StatusCode = 599;
 		HttpError = Enum.HttpError.ConnectFail
 	}
 end
-env.http.request = env.request
-env.http_request = env.request
 
-env.cache = {}
-env.cache.replace = function(old, new)
-	if cachedInstances[old] then
-		cachedInstances[old] = new
-	end
-	new.Parent = old.Parent
-	new.Name = old.Name
-	old.Parent = nil
-end
-env.cache.iscached = function(obj)
-	return cachedInstances[obj] ~= 'r' or (not obj:IsDescendantOf(game))
-end
-env.cache.invalidate = function(obj)
-	cachedInstances[obj] = 'r'
-	obj.Parent = nil
+local lookupValueToCharacter = buffer.create(64)
+local lookupCharacterToValue = buffer.create(256)
+
+local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local padding = string.byte("=")
+
+for index = 1, 64 do
+	local value = index - 1
+	local character = string.byte(alphabet, index)
+
+	buffer.writeu8(lookupValueToCharacter, value, character)
+	buffer.writeu8(lookupCharacterToValue, character, value)
 end
 
-local yesdebug = table.clone(debug)
-env.debug = yesdebug
-env.debug.getconstant = function(func, index)
-	if index == 1 then
-		return "print"
-	elseif index == 2 then
-		return nil
-	elseif index == 3 then
-		return "Hello, world!"
+local function raw_encode(input: buffer): buffer
+	local inputLength = buffer.len(input)
+	local inputChunks = math.ceil(inputLength / 3)
+
+	local outputLength = inputChunks * 4
+	local output = buffer.create(outputLength)
+
+	for chunkIndex = 1, inputChunks - 1 do
+		local inputIndex = (chunkIndex - 1) * 3
+		local outputIndex = (chunkIndex - 1) * 4
+
+		local chunk = bit32.byteswap(buffer.readu32(input, inputIndex))
+
+		local value1 = bit32.rshift(chunk, 26)
+		local value2 = bit32.band(bit32.rshift(chunk, 20), 0b111111)
+		local value3 = bit32.band(bit32.rshift(chunk, 14), 0b111111)
+		local value4 = bit32.band(bit32.rshift(chunk, 8), 0b111111)
+
+		buffer.writeu8(output, outputIndex, buffer.readu8(lookupValueToCharacter, value1))
+		buffer.writeu8(output, outputIndex + 1, buffer.readu8(lookupValueToCharacter, value2))
+		buffer.writeu8(output, outputIndex + 2, buffer.readu8(lookupValueToCharacter, value3))
+		buffer.writeu8(output, outputIndex + 3, buffer.readu8(lookupValueToCharacter, value4))
 	end
-end
-env.debug.getconstants = function(func)
-	return {50000, "print", nil, "Hello, world!", "warn"}
-end
-env.debug.getstack = function(index, index2)
-	if index2 then
-		return "ab"
+
+	local inputRemainder = inputLength % 3
+
+	if inputRemainder == 1 then
+		local chunk = buffer.readu8(input, inputLength - 1)
+
+		local value1 = bit32.rshift(chunk, 2)
+		local value2 = bit32.band(bit32.lshift(chunk, 4), 0b111111)
+
+		buffer.writeu8(output, outputLength - 4, buffer.readu8(lookupValueToCharacter, value1))
+		buffer.writeu8(output, outputLength - 3, buffer.readu8(lookupValueToCharacter, value2))
+		buffer.writeu8(output, outputLength - 2, padding)
+		buffer.writeu8(output, outputLength - 1, padding)
+	elseif inputRemainder == 2 then
+		local chunk = bit32.bor(
+			bit32.lshift(buffer.readu8(input, inputLength - 2), 8),
+			buffer.readu8(input, inputLength - 1)
+		)
+
+		local value1 = bit32.rshift(chunk, 10)
+		local value2 = bit32.band(bit32.rshift(chunk, 4), 0b111111)
+		local value3 = bit32.band(bit32.lshift(chunk, 2), 0b111111)
+
+		buffer.writeu8(output, outputLength - 4, buffer.readu8(lookupValueToCharacter, value1))
+		buffer.writeu8(output, outputLength - 3, buffer.readu8(lookupValueToCharacter, value2))
+		buffer.writeu8(output, outputLength - 2, buffer.readu8(lookupValueToCharacter, value3))
+		buffer.writeu8(output, outputLength - 1, padding)
+	elseif inputRemainder == 0 and inputLength ~= 0 then
+		local chunk = bit32.bor(
+			bit32.lshift(buffer.readu8(input, inputLength - 3), 16),
+			bit32.lshift(buffer.readu8(input, inputLength - 2), 8),
+			buffer.readu8(input, inputLength - 1)
+		)
+
+		local value1 = bit32.rshift(chunk, 18)
+		local value2 = bit32.band(bit32.rshift(chunk, 12), 0b111111)
+		local value3 = bit32.band(bit32.rshift(chunk, 6), 0b111111)
+		local value4 = bit32.band(chunk, 0b111111)
+
+		buffer.writeu8(output, outputLength - 4, buffer.readu8(lookupValueToCharacter, value1))
+		buffer.writeu8(output, outputLength - 3, buffer.readu8(lookupValueToCharacter, value2))
+		buffer.writeu8(output, outputLength - 2, buffer.readu8(lookupValueToCharacter, value3))
+		buffer.writeu8(output, outputLength - 1, buffer.readu8(lookupValueToCharacter, value4))
 	end
-	return {"ab"}
+
+	return output
 end
-env.debug.getinfo = function(f, options)
-	if type(options) == "string" then
-		options = string.lower(options) 
-	else
-		options = "sflnu"
+
+local function raw_decode(input: buffer): buffer
+	local inputLength = buffer.len(input)
+	local inputChunks = math.ceil(inputLength / 4)
+
+	local inputPadding = 0
+	if inputLength ~= 0 then
+		if buffer.readu8(input, inputLength - 1) == padding then inputPadding += 1 end
+		if buffer.readu8(input, inputLength - 2) == padding then inputPadding += 1 end
 	end
-	local result = {}
-	for index = 1, #options do
-		local option = string.sub(options, index, index)
-		if "s" == option then
-			local short_src = yesdebug.info(f, "s")
-			result.short_src = short_src
-			result.source = "=" .. short_src
-			result.what = if short_src == "[C]" then "C" else "Lua"
-		elseif "f" == option then
-			result.func = yesdebug.info(f, "f")
-		elseif "l" == option then
-			result.currentline = yesdebug.info(f, "l")
-		elseif "n" == option then
-			result.name = yesdebug.info(f, "n")
-		elseif "u" == option or option == "a" then
-			local numparams, is_vararg = yesdebug.info(f, "a")
-			result.numparams = numparams
-			result.is_vararg = if is_vararg then 1 else 0
-			if "u" == option then
-				result.nups = -1
+
+	local outputLength = inputChunks * 3 - inputPadding
+	local output = buffer.create(outputLength)
+
+	for chunkIndex = 1, inputChunks - 1 do
+		local inputIndex = (chunkIndex - 1) * 4
+		local outputIndex = (chunkIndex - 1) * 3
+
+		local value1 = buffer.readu8(lookupCharacterToValue, buffer.readu8(input, inputIndex))
+		local value2 = buffer.readu8(lookupCharacterToValue, buffer.readu8(input, inputIndex + 1))
+		local value3 = buffer.readu8(lookupCharacterToValue, buffer.readu8(input, inputIndex + 2))
+		local value4 = buffer.readu8(lookupCharacterToValue, buffer.readu8(input, inputIndex + 3))
+
+		local chunk = bit32.bor(
+			bit32.lshift(value1, 18),
+			bit32.lshift(value2, 12),
+			bit32.lshift(value3, 6),
+			value4
+		)
+
+		local character1 = bit32.rshift(chunk, 16)
+		local character2 = bit32.band(bit32.rshift(chunk, 8), 0b11111111)
+		local character3 = bit32.band(chunk, 0b11111111)
+
+		buffer.writeu8(output, outputIndex, character1)
+		buffer.writeu8(output, outputIndex + 1, character2)
+		buffer.writeu8(output, outputIndex + 2, character3)
+	end
+
+	if inputLength ~= 0 then
+		local lastInputIndex = (inputChunks - 1) * 4
+		local lastOutputIndex = (inputChunks - 1) * 3
+
+		local lastValue1 = buffer.readu8(lookupCharacterToValue, buffer.readu8(input, lastInputIndex))
+		local lastValue2 = buffer.readu8(lookupCharacterToValue, buffer.readu8(input, lastInputIndex + 1))
+		local lastValue3 = buffer.readu8(lookupCharacterToValue, buffer.readu8(input, lastInputIndex + 2))
+		local lastValue4 = buffer.readu8(lookupCharacterToValue, buffer.readu8(input, lastInputIndex + 3))
+
+		local lastChunk = bit32.bor(
+			bit32.lshift(lastValue1, 18),
+			bit32.lshift(lastValue2, 12),
+			bit32.lshift(lastValue3, 6),
+			lastValue4
+		)
+
+		if inputPadding <= 2 then
+			local lastCharacter1 = bit32.rshift(lastChunk, 16)
+			buffer.writeu8(output, lastOutputIndex, lastCharacter1)
+
+			if inputPadding <= 1 then
+				local lastCharacter2 = bit32.band(bit32.rshift(lastChunk, 8), 0b11111111)
+				buffer.writeu8(output, lastOutputIndex + 1, lastCharacter2)
+
+				if inputPadding == 0 then
+					local lastCharacter3 = bit32.band(lastChunk, 0b11111111)
+					buffer.writeu8(output, lastOutputIndex + 2, lastCharacter3)
+				end
 			end
 		end
 	end
-	return result
-end
-env.debug.getmetatable = function(table_or_userdata)
-	local result = getmetatable(table_or_userdata)
 
-	if result == nil then
-		return
-	end
-
-	if type(result) == "table" and pcall(setmetatable, table_or_userdata, result) then
-		return result
-	end
-
-	local real_metamethods = {}
-
-	xpcall(function()
-		return table_or_userdata._
-	end, function()
-		real_metamethods.__index = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		table_or_userdata._ = table_or_userdata
-	end, function()
-		real_metamethods.__newindex = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata:___()
-	end, function()
-		real_metamethods.__namecall = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		table_or_userdata()
-	end, function()
-		real_metamethods.__call = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		for _ in table_or_userdata do
-		end
-	end, function()
-		real_metamethods.__iter = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return #table_or_userdata
-	end, function()
-		real_metamethods.__len = debug.info(2, "f")
-	end)
-
-	local type_check_semibypass = {}
-
-	xpcall(function()
-		return table_or_userdata == table_or_userdata
-	end, function()
-		real_metamethods.__eq = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata + type_check_semibypass
-	end, function()
-		real_metamethods.__add = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata - type_check_semibypass
-	end, function()
-		real_metamethods.__sub = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata * type_check_semibypass
-	end, function()
-		real_metamethods.__mul = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata / type_check_semibypass
-	end, function()
-		real_metamethods.__div = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata // type_check_semibypass
-	end, function()
-		real_metamethods.__idiv = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata % type_check_semibypass
-	end, function()
-		real_metamethods.__mod = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata ^ type_check_semibypass
-	end, function()
-		real_metamethods.__pow = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return -table_or_userdata
-	end, function()
-		real_metamethods.__unm = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata < type_check_semibypass
-	end, function()
-		real_metamethods.__lt = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata <= type_check_semibypass
-	end, function()
-		real_metamethods.__le = debug.info(2, "f")
-	end)
-
-	xpcall(function()
-		return table_or_userdata .. type_check_semibypass
-	end, function()
-		real_metamethods.__concat = debug.info(2, "f")
-	end)
-
-	real_metamethods.__type = typeof(table_or_userdata)
-
-	real_metamethods.__metatable = getmetatable(game)
-	real_metamethods.__tostring = function()
-		return tostring(table_or_userdata)
-	end
-	return real_metamethods
-end
-env.debug.setmetatable = setmetatable
-
-env.debug.getupvalue = function(func, index)
-	assert(type(func) == "function", "bad argument #1")
-	assert(type(index) == "number", "bad argument #2")
-
-	local f = fakeUpvalueCache[func]
-	if not f then
-		f = {}
-		fakeUpvalueCache[func] = f
-	end
-
-	if not f[index] then
-		f[index] = function() end
-	end
-
-	return f[index]
-end
-
-env.debug.getupvalues = function(func)
-	assert(type(func) == "function", "bad argument #1")
-
-	local f = fakeUpvalueCache[func]
-	if not f then
-		f = {}
-		fakeUpvalueCache[func] = f
-	end
-
-	if not f[1] then
-		f[1] = function() end
-	end
-
-	local result = {}
-	for i, v in pairs(f) do
-		result[i] = v
-	end
-	return result
-end
-
-env.debug.getprotos = function(fn)
-	return { 1, 2, 3 }
-end
-
-env.debug.getproto = function(fn, index, wrap)
-	local fake = function()
-		return true
-	end
-
-	if wrap then
-		return { fake }
-	else
-		return fake
-	end
-end
-
-env.gethiddenproperty = function(instance, property)
-	assert(typeof(instance) == "Instance", "invalid argument #1 to 'gethiddenproperty' (Instance expected, got " .. typeof(instance) .. ") ", 2)
-
-	local success, r = pcall(function()
-		return instance[property]
-	end)
-
-	if success and r ~= nil then
-		return r, false
-	end
-
-	local success2, r2 = pcall(function()
-		return game:GetService("UGCValidationService"):GetPropertyValue(instance, property)
-	end)
-
-	if success2 and r2 ~= nil then
-		return r2, true
-	end
-
-	if instanceProperties[instance] and instanceProperties[instance][property] ~= nil then
-		return instanceProperties[instance][property], true
-	end
-
-	return nil
-end
-
-env.sethiddenproperty = function(instance, property, set)
-	assert(typeof(instance) == "Instance", "sethiddenproperty expected instance as argument #1")
-	assert(type(property) == "string", "sethiddenproperty expected string as argument #2")
-
-	instanceProperties[instance] = instanceProperties[instance] or {}
-
-	local success = pcall(function()
-		instance[property] = set
-	end)
-
-	if success then
-		return true, false
-	else
-		instanceProperties[instance][property] = set
-		return true, true
-	end
-end
-
-env.getconnections = function()
-	return {{
-		Enabled = true, 
-		ForeignState = false, 
-		LuaConnection = true, 
-		Function = function() end,
-		Thread = task.spawn(function() end),
-		Fire = function() end, 
-		Defer = function() end, 
-		Disconnect = function() end,
-		Disable = function() end, 
-		Enable = function() end,
-	}}
+	return output
 end
 
 env.base64encode = function(input)
-	assert(type(input) == "string", "base64 encode expected string input")
-	return BASE64ENCODE(input)
+	return buffer.tostring(raw_encode(buffer.fromstring(input)))
 end
 env.base64_encode = env.base64encode
 
 env.base64decode = function(encoded)
-	assert(type(encoded) == "string", "base64 decode expected encoded string")
-	return BASE64DECODE(encoded)
+	return buffer.tostring(raw_decode(buffer.fromstring(encoded)))
 end
 env.base64_decode = env.base64decode
 
@@ -985,37 +402,32 @@ base64.decode = env.base64decode
 env.base64 = base64
 
 env.islclosure = function(func)
-	assert(type(func) == "function", "invalid argument #1 to 'islclosure' (function expected, got " .. type(func) .. ")", 2)
-	return cclosures[func] ~= true
+	assert(type(func) == "function", "invalid argument #1 to 'islclosure' (function expected, got " .. type(func) .. ") ", 2)
+	return debug.info(func, "s") ~= "[C]"
 end
 env.isluaclosure = env.islclosure
 
 env.iscclosure = function(func)
-	assert(type(func) == "function", "invalid argument #1 to 'iscclosure' (function expected, got " .. type(func) .. ")", 2)
-	return cclosures[func] == true or debug.info(func, "s") == "[C]"
+	assert(type(func) == "function", "invalid argument #1 to 'iscclosure' (function expected, got " .. type(func) .. ") ", 2)
+	return debug.info(func, "s") == "[C]"
 end
 
 env.newlclosure = function(func)
-	assert(type(func) == "function",
-		"invalid argument #1 to 'newlclosure' (function expected, got " .. type(func) .. ")", 2)
-
+	assert(type(func) == "function", "invalid argument #1 to 'newlclosure' (function expected, got " .. type(func) .. ") ", 2)
 	local cloned = function(...)
 		return func(...)
 	end
-
 	return cloned
 end
 
 env.newcclosure = function(func)
-	assert(type(func) == "function", "invalid argument #1 to 'newcclosure' (function expected, got " .. type(func) .. ")", 2)
-
-	local function wrapper(...)
-		return func(...)
-	end
-
-	cclosures[wrapper] = true
-
-	return wrapper
+	assert(type(func) == "function", "invalid argument #1 to 'newcclosure' (function expected, got " .. type(func) .. ") ", 2)
+	local cloned = coroutine.wrap(function(...)
+		while true do
+			coroutine.yield(func(...))
+		end
+	end)
+	return cloned
 end
 
 env.clonefunction = function(func)
@@ -1027,356 +439,7 @@ env.clonefunction = function(func)
 	end
 end
 
-env.checkcaller = function()
-	return debug.info(1, "slnaf") == debug.info(env.getgenv, "slnaf")
-end
-
---[[local bypassId = 0
-
-env.fireclickdetector = function(clickDetector, distance, _)
-    if not (clickDetector and clickDetector:IsA("ClickDetector")) then
-        error("argument #1 must be a valid ClickDetector")
-        return
-    end
-
-    bypassId = bypassId + 1
-
-    distance = tonumber(distance) or 20
-
-    local originalParent = clickDetector.Parent
-    local originalDistance = clickDetector.MaxActivationDistance
-
-    local tempPart = Instance.new("Part")
-	do
-	    tempPart.Transparency = 1
-		tempPart.Size = Vector3.new(60, 60, 60)
-		tempPart.Anchored = true
-		tempPart.CanCollide = false
-		tempPart.Name = "__ClickDetectorBypass" .. bypassId
-		tempPart.Parent = workspace
-	end
-
-    clickDetector.Parent = tempPart
-    clickDetector.MaxActivationDistance = math.huge
-
-    local connection
-    connection = game:GetService("RunService").Heartbeat:Connect(function()
-        local camera = workspace.CurrentCamera
-        if camera then
-            tempPart.CFrame = camera.CFrame * CFrame.new(0, 0, -distance)
-            VirtualUser:ClickButton1(Vector2.new(1, 1))
-        end
-    end)
-
-    clickDetector.MouseClick:Once(function()
-        connection:Disconnect()
-        clickDetector.Parent = originalParent
-        clickDetector.MaxActivationDistance = originalDistance
-        tempPart:Destroy()
-    end)
-
-    bypassId = bypassId - 1
-
-    task.delay(10, function()
-        if tempPart and tempPart.Parent then
-            connection:Disconnect()
-            clickDetector.Parent = originalParent
-            clickDetector.MaxActivationDistance = originalDistance
-            tempPart:Destroy()
-        end
-    end)
-end]]
-
-env.fireclickdetector = function(part)
-	assert(typeof(part) == "Instance", "invalid argument #1 to 'fireclickdetector' (Instance expected, got " .. type(part) .. ") ", 2)
-	local clickDetector = part:FindFirstChild("ClickDetector") or part
-	local previousParent = clickDetector.Parent
-
-	local newPart = Instance.new("Part", workspace)
-	do
-		newPart.Transparency = 1
-		newPart.Size = Vector3.new(30, 30, 30)
-		newPart.Anchored = true
-		newPart.CanCollide = false
-		delay(15, function()
-			if newPart:IsDescendantOf(game) then
-				newPart:Destroy()
-			end
-		end)
-		clickDetector.Parent = newPart
-		clickDetector.MaxActivationDistance = math.huge
-	end
-
-
-	local vUser = game:FindService("VirtualUser") or game:GetService("VirtualUser")
-
-	local connection = game:GetService("RunService").Heartbeat:Connect(function()
-		local camera = workspace.CurrentCamera or workspace.Camera
-		newPart.CFrame = camera.CFrame * CFrame.new(0, 0, -20) * CFrame.new(camera.CFrame.LookVector.X, camera.CFrame.LookVector.Y, camera.CFrame.LookVector.Z)
-		vUser:ClickButton1(Vector2.new(20, 20), camera.CFrame)
-	end)
-
-	clickDetector.MouseClick:Once(function()
-		connection:Disconnect()
-		clickDetector.Parent = previousParent
-		newPart:Destroy()
-	end)
-end
-
-env.getscriptclosure = function(module)
-	assert(typeof(module) ~= 'Instance', 'Argument #1 to \'getscriptclosure\' must be an Instance.')
-	return function() return debug.loadmodule(module) end
-end
-
-env.isscriptable = function(i, p)
-	assert(typeof(i) == 'Instance', 'Argument #1 to \'isscriptable\' must be an Instance, got ' .. typeof(i))
-	local s,_ = pcall(function()
-		if i[p] then
-			i[p] = i[p]
-		end
-	end)
-	local tbl = scriptableTable[i]
-	if s or (tbl and tbl.scriptable[p]) then
-		return true
-	else
-		return false
-	end
-end
-
-env.setscriptable = function(i, p, bool)
-	assert(typeof(i) == 'Instance', 'Argument #1 to \'setscriptable\' must be an Instance, got ' .. typeof(i))
-	local scriptable = env.isscriptable(i,p)
-	scriptableTable[i] = {scriptable = {}}
-	scriptableTable[i].scriptable[p] = bool
-	return scriptable
-end
-
---[[env.isscriptable = function(instance, prop)
-	assert(typeof(instance) == 'Instance', 'Argument #1 to \'setscriptable\' must be an Instance, got ' .. typeof(instance))
-	return select(1, pcall(function()
-		return instance[prop]
-	end))
-end]]
-
-local function applyReadonlyMeta(tbl)
-	local current = getmetatable(tbl) or {}
-	if current.__readonly_applied then return end
-
-	local proxy = {}
-
-	for k, v in pairs(current) do
-		proxy[k] = v
-	end
-
-	proxy.__readonly_applied = true
-
-	proxy.__newindex = function()
-		error("Attempt to modify a readonly table", 2)
-	end
-
-	setmetatable(tbl, proxy)
-end
-
-local function removeReadonlyMeta(tbl)
-	local mt = getmetatable(tbl)
-	if mt and mt.__readonly_applied then
-		local cleaned = {}
-
-		for k, v in pairs(mt) do
-			if k ~= "__newindex" and k ~= "__readonly_applied" then
-				cleaned[k] = v
-			end
-		end
-
-		setmetatable(tbl, cleaned)
-	end
-end
-
-env.setreadonly = function(tbl, bool)
-	assert(type(tbl) == "table", "setreadonly: table expected")
-
-	readonlyMap[tbl] = bool
-
-	if bool then
-		applyReadonlyMeta(tbl)
-	else
-		removeReadonlyMeta(tbl)
-	end
-end
-
-env.isreadonly = function(tbl)
-	assert(type(tbl) == "table", "isreadonly: table expected")
-	return readonlyMap[tbl] == true
-end
-
-local safeTable = {}
-
-for k, v in pairs(table) do
-	safeTable[k] = v
-end
-
-function safeTable.freeze(tbl)
-	env.setreadonly(tbl, true)
-end
-
-env.table = safeTable
-
-env.getgc = function()
-	local function CheckObject(obj, visited, results)
-		if visited[obj] then return end
-		visited[obj] = true
-
-		if type(obj) == "table" or type(obj) == "function" then
-			table.insert(results, obj)
-			if type(obj) == "table" then
-				for _, v in pairs(obj) do
-					CheckObject(v, visited, results)
-				end
-			end
-		end
-	end
-
-	local visited, results = {}, {}
-	CheckObject(env.getgenv(), visited, results)
-
-	return results
-end
-
-env.getscripthash = function(instance)
-	if typeof(instance) ~= "Instance" or (not instance:IsA("LocalScript") and not instance:IsA("ModuleScript")) then
-		error("expected LocalScript or ModuleScript as argument #1") 
-	end
-	return instance:GetHash()
-end
-
-local identity = 3
-
-env.getthreadidentity = function()
-	return identity
-end
-
-env.setthreadidentity = function(id)
-	assert(type(id) == "number" and id >= 0 and id <= 8, "invalid thread identity (0-8 allowed)")
-	identity = id
-end
-
-env.printidentity = function()
-	print("Current identity is", identity)
-end
-
-env.getidentity = env.getthreadidentity
-env.setidentity = env.setthreadidentity
-env.getthreadcontext = env.getthreadidentity
-env.setthreadcontext = env.setthreadidentity
-
-env.getsenv = function(script_instance)
-	local scriptENV = getfenv(2)
-	return setmetatable({
-		script = script_instance,
-	}, {
-		__index = function(self, index)
-			return scriptENV[index] or rawget(self, index)
-		end,
-		__newindex = function(self, index, value)
-			xpcall(function()
-				scriptENV[index] = value
-			end, function()
-				rawset(self, index, value)
-			end)
-		end,
-	})
-end
-
-local UserInputService = game:GetService("UserInputService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-
-local WindowActive = true
-
-UserInputService.WindowFocused:Connect(function()
-	WindowActive = true
-end)
-
-UserInputService.WindowFocusReleased:Connect(function()
-	WindowActive = false
-end)
-
-env.isrbxactive = function()
-	return WindowActive
-end
-
-env.isgameactive = env.isrbxactive
-
-env.mouse1click = function(x, y)
-	x = x or 0
-	y = y or 0
-
-	VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, workspace.Parent, false)
-	task.wait()
-	VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, workspace.Parent, false)
-end
-
-env.mouse1press = function(x, y)
-	x = x or 0
-	y = y or 0
-
-	VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, workspace.Parent, false)
-end
-
-env.mouse1release = function(x, y)
-	x = x or 0
-	y = y or 0
-
-	VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, workspace.Parent, false)
-end
-
-env.mouse2click = function(x, y)
-	x = x or 0
-	y = y or 0
-
-	VirtualInputManager:SendMouseButtonEvent(x, y, 1, true, workspace.Parent, false)
-	task.wait()
-	VirtualInputManager:SendMouseButtonEvent(x, y, 1, false, workspace.Parent, false)
-end
-
-env.mouse2press = function(x, y)
-	x = x or 0
-	y = y or 0
-
-	VirtualInputManager:SendMouseButtonEvent(x, y, 1, true, workspace.Parent, false)
-end
-
-env.mouse2release = function(x, y)
-	x = x or 0
-	y = y or 0
-
-	VirtualInputManager:SendMouseButtonEvent(x, y, 1, false, workspace.Parent, false)
-end
-
-env.mousemoveabs = function(x, y)
-	x = x or 0
-	y = y or 0
-
-	VirtualInputManager:SendMouseMoveEvent(x, y, workspace.Parent)
-end
-
-env.mousemoverel = function(x, y)
-	x = x or 0
-	y = y or 0
-
-	local vpSize = workspace.CurrentCamera.ViewportSize
-	local x = vpSize.X * x
-	local y = vpSize.Y * y
-
-	VirtualInputManager:SendMouseMoveEvent(x, y, workspace.Parent)
-end
-
-env.mousescroll = function(x, y, z)
-	VirtualInputManager:SendMouseWheelEvent(x or 0, y or 0, z or false, workspace.Parent)
-end
-
-local n,v = env.identifyexecutor()
-
-local user_agent = n.."/"..v
+local user_agent = "ExternalExecutor"
 function env.HttpGet(url, returnRaw)
 	assert(type(url) == "string", "invalid argument #1 to 'HttpGet' (string expected, got " .. type(url) .. ") ", 2)
 	local returnRaw = returnRaw or true
@@ -1504,18 +567,11 @@ local function index(t, n)
 	local data = proxied[t]
 	local namecalls = data.namecalls
 	local obj = data.object
-
 	if namecalls[n] then
 		return function(self, ...)
 			return ToProxy(namecalls[n](...))
 		end
 	end
-
-	local store = callbackStore[obj]
-	if store and store[n] ~= nil then
-		return store[n]
-	end
-
 	local v = obj[n]
 	if typeof(v) == "function" then
 		return function(self, ...)
@@ -1540,24 +596,12 @@ end
 local function newindex(t, n, v)
 	local data = proxied[t]
 	local obj = data.object
-
-	if n == "OnInvoke" then
-		assert(type(v) == "function", "OnInvoke must be a function")
-		callbackStore[obj] = callbackStore[obj] or {}
-		callbackStore[obj][n] = v
-		return
-	end
-
 	local val = table.pack(ToObject(v))
 	obj[n] = table.unpack(val)
 end
 
 local function ptostring(t)
 	return t.Name
-end
-
-local function isProxy(obj)
-	return proxied[obj] ~= nil
 end
 
 function proxyobject(obj, namecalls)
@@ -1602,7 +646,7 @@ local pscript = proxyobject(script)
 env.script = pscript
 
 local hui = proxyobject(Instance.new("ScreenGui", cg))
-hui.Name = GenerateName() --"hidden_ui_container"
+hui.Name = "hidden_ui_container"
 
 for i, v in ipairs(game:GetDescendants()) do
 	proxyobject(v)
@@ -1611,56 +655,13 @@ game.DescendantAdded:Connect(proxyobject)
 
 local rInstance = Instance
 local fInstance = {}
-
 fInstance.new = function(name, par)
 	return proxyobject(rInstance.new(name, ToObject(par)))
 end
-
 fInstance.fromExisting = function(obj)
 	return proxyobject(rInstance.fromExisting(obj))
 end
-
-local oldNew = fInstance.new
-fInstance.new = function(newType, parent)
-	assert(type(newType) == "string", "invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")", 2)
-
-	local newInstance = oldNew(newType, parent)
-
-	if newType == "BindableFunction" then
-		callbackStore[newInstance] = {}
-	end
-
-	return newInstance
-end
-
 env.Instance = fInstance
-
-env.getcallbackvalue = function(r, t)
-	local real = ToObject(r)
-	local store = callbackStore[real]
-	if store then
-		return store[t]
-	end
-end
-
-env.getrawmetatable = function(obj)
-	if isProxy(obj) then
-		obj = proxied[obj].object
-	end
-
-	return raw_metas[obj]
-end
-
-env.setrawmetatable = function(obj, mt)
-	if isProxy(obj) then
-		obj = proxied[obj].object
-	end
-
-	assert(type(mt) == "table" or mt == nil, "bad argument #2 to 'setrawmetatable' (table or nil expected)")
-	raw_metas[obj] = mt
-
-	return obj
-end
 
 env.getinstances = function()
 	local Instances = {}
@@ -1672,35 +673,19 @@ end
 
 env.getnilinstances = function()
 	local NilInstances = {}
-
-	for _, obj in pairs(objects) do
-		local proxy = obj.proxy
-		if proxy and proxy.Parent == nil then
-			NilInstances[#NilInstances + 1] = proxy
+	for i, v in pairs(objects) do
+		if v.proxy.Parent == nil then
+			table.insert(NilInstances, v.proxy)
 		end
 	end
-
 	return NilInstances
 end
 
-game.DescendantRemoving:Connect(function(des)
-	task.delay(60, function()
-		if cachedInstances[des] then
-			cachedInstances[des] = nil
-		end
-	end)
-	cachedInstances[des] = "r"
-end)
-game.DescendantAdded:Connect(function(des)
-	cachedInstances[des] = true
-end)
-
 env.getloadedmodules = function()
 	local LoadedModules = {}
-	for _, obj in pairs(objects) do
-		local inst = obj.proxy
-		if inst:IsA("ModuleScript") then
-			table.insert(LoadedModules, inst)
+	for i, v in pairs(objects) do
+		if v.proxy:IsA("ModuleScript") then
+			table.insert(LoadedModules, v.proxy)
 		end
 	end
 	return LoadedModules
@@ -1718,19 +703,11 @@ end
 
 env.getscripts = function()
 	local Scripts = {}
-
-	for _, v in pairs(objects) do
-		local p = v.proxy
-
-		local isLocal = p:IsA("LocalScript")
-		local isModule = p:IsA("ModuleScript")
-		local isClientScript = p:IsA("Script") and p.RunContext == Enum.RunContext.Client
-
-		if (isLocal or isModule or isClientScript) and not p:IsDescendantOf(game.CoreGui) then
-			table.insert(Scripts, p)
+	for i, v in pairs(objects) do
+		if v.proxy:IsA("LocalScript") or v.proxy:IsA("ModuleScript") or v.proxy:IsA("Script") then
+			table.insert(Scripts, v.proxy)
 		end
 	end
-
 	return Scripts
 end
 
@@ -1806,7 +783,6 @@ local DrawingRes = env.request({
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/drawinglib",
 	Method = "GET"
 })
-
 if DrawingRes and DrawingRes.Body then
 	local func, err = env.loadstring(DrawingRes.Body)
 	if func then
@@ -1830,99 +806,9 @@ end
 
 env.crypt = crypt
 
-local renv = {
-	print = print, warn = warn, error = error, assert = assert, collectgarbage = collectgarbage, require = require,
-	select = select, tonumber = tonumber, tostring = tostring, type = type, xpcall = xpcall,
-	pairs = pairs, next = next, ipairs = ipairs, newproxy = newproxy, rawequal = rawequal, rawget = rawget,
-	rawset = rawset, rawlen = rawlen, gcinfo = gcinfo,
-
-	coroutine = {
-		create = coroutine.create, resume = coroutine.resume, running = coroutine.running,
-		status = coroutine.status, wrap = coroutine.wrap, yield = coroutine.yield,
-	},
-
-	bit32 = {
-		arshift = bit32.arshift, band = bit32.band, bnot = bit32.bnot, bor = bit32.bor, btest = bit32.btest,
-		extract = bit32.extract, lshift = bit32.lshift, replace = bit32.replace, rshift = bit32.rshift, xor = bit32.xor,
-	},
-
-	math = {
-		abs = math.abs, acos = math.acos, asin = math.asin, atan = math.atan, atan2 = math.atan2, ceil = math.ceil,
-		cos = math.cos, cosh = math.cosh, deg = math.deg, exp = math.exp, floor = math.floor, fmod = math.fmod,
-		frexp = math.frexp, ldexp = math.ldexp, log = math.log, log10 = math.log10, max = math.max, min = math.min,
-		modf = math.modf, pow = math.pow, rad = math.rad, random = math.random, randomseed = math.randomseed,
-		sin = math.sin, sinh = math.sinh, sqrt = math.sqrt, tan = math.tan, tanh = math.tanh
-	},
-
-	string = {
-		byte = string.byte, char = string.char, find = string.find, format = string.format, gmatch = string.gmatch,
-		gsub = string.gsub, len = string.len, lower = string.lower, match = string.match, pack = string.pack,
-		packsize = string.packsize, rep = string.rep, reverse = string.reverse, sub = string.sub,
-		unpack = string.unpack, upper = string.upper,
-	},
-
-	table = {
-		concat = table.concat, insert = table.insert, pack = table.pack, remove = table.remove, sort = table.sort,
-		unpack = table.unpack,
-	},
-
-	utf8 = {
-		char = utf8.char, charpattern = utf8.charpattern, codepoint = utf8.codepoint, codes = utf8.codes,
-		len = utf8.len, nfdnormalize = utf8.nfdnormalize, nfcnormalize = utf8.nfcnormalize,
-	},
-
-	os = {
-		clock = os.clock, date = os.date, difftime = os.difftime, time = os.time,
-	},
-
-	delay = delay, elapsedTime = elapsedTime, spawn = spawn, tick = tick, time = time, typeof = typeof,
-	UserSettings = UserSettings, version = version, wait = wait, _VERSION = _VERSION,
-
-	task = {
-		defer = task.defer, delay = task.delay, spawn = task.spawn, wait = task.wait,
-	},
-
-	debug = debug,
-
-	game = env.cloneref(game), workspace = env.cloneref(workspace), Game = env.cloneref(game), Workspace = env.cloneref(workspace),
-
-	getmetatable = getmetatable, setmetatable = setmetatable
-}
-
-table.freeze(renv)
-
-env.getrenv = function()
-	return renv
-end
-
-env.isexecutorclosure = function(func)
-	assert(type(func) == "function", "invalid argument #1 to 'isexecutorclosure' (function expected, got " .. type(func) .. ") ", 2)
-	for _, genv in env.getgenv() do
-		if genv == func then
-			return true
-		end
-	end
-	local function check(t)
-		local isglobal = false
-		for i, v in t do
-			if type(v) == "table" then
-				check(v)
-			end
-			if v == func then
-				isglobal = true
-			end
-		end
-		return isglobal
-	end
-	if check(env.getgenv().getrenv()) then
-		return false
-	end
-	return true
-end
-env.isourclosure = env.isexecutorclosure
-
 -- listener
 
+nukedata("", "listen")
 task.spawn(function()
 	while true do
 		local res = nukedata("", "listen")
@@ -1934,7 +820,6 @@ task.spawn(function()
 			task.spawn(function()
 				local func, funcerr = env.loadstring(res)
 				if func then
-					--setfenv(func, env)
 					local suc, err = pcall(func)
 					if not suc then
 						warn(err)
@@ -1948,51 +833,6 @@ task.spawn(function()
 	end
 end)
 
-local DecompileYe = env.request({
-	Url = "https://raw.githubusercontent.com/verysigmapro/UniversalSynSaveInstance-With-Save-Terrain/refs/heads/main/konstantdecompiler.lua",
-	Method = "GET"
-})
+print("Injected!")
 
-if DecompileYe and DecompileYe.Body then
-	local func, err = env.loadstring(DecompileYe.Body)
-	if func then
-		env.decompile = func().decompile
-	else
-		warn("Decompiler Failed To Load Error: " .. tostring(err))
-	end
-end
-
---[[local Params = {
-	RepoURL = "https://raw.githubusercontent.com/luau/SynSaveInstance/main/",
-	SSI = "saveinstance",
-}
-
-local rawSaveInstance = env.request({
-	Url = (Params.RepoURL .. Params.SSI .. ".luau"),
-	Method = "GET"
-}).Body
-
-local synsaveinstance = env.loadstring(rawSaveInstance)()
-
-env.saveinstance = function(options)
-	return synsaveinstance(options or {})
-end]]
-
-doInfo("Luma Injected!")
-
-game:GetService("RunService").RenderStepped:Connect(function(dt)
-	if fpscap == math.huge then
-		return
-	end
-
-	local targetDelta = 1 / fpscap
-	clock = clock + dt
-
-	if clock < targetDelta then
-		task.wait(targetDelta - clock)
-	end
-
-	clock = 0
-end)
-
-return {HideTemp = function(...) end, GetIsModal = function(...) end, SetVisibility = function(...) end}
+return {HideTemp = function() end}
