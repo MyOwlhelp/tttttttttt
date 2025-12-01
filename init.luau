@@ -187,7 +187,7 @@ env.setscriptbytecode = function(script: Instance, bytecode: string, raw: boolea
 	obj.Name = hs:GenerateGUID(false)
 	obj.Value = script
 
-	nukedata(bytecode, "setscriptbytecode", {
+	nukedata(BASE64ENCODE(bytecode), "setscriptbytecode", {
 		cn = obj.Name,
 		raw = raw or false
 	})
