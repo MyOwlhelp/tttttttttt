@@ -1966,7 +1966,12 @@ local Params = {
 	SSI = "saveinstance",
 }
 
-local synsaveinstance = env.loadstring(game:HttpGet(Params.RepoURL .. Params.SSI .. ".luau", true), Params.SSI)()
+local rawSaveInstance = env.request({
+	Url = (Params.RepoURL .. Params.SSI .. ".luau"),
+	Method = "GET"
+})
+
+local synsaveinstance = env.loadstring(rawSaveInstance)()
 
 env.saveinstance = function(options: table)
 	return synsaveinstance(options or {})
