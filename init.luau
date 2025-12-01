@@ -182,13 +182,14 @@ env.getfpscap = function()
 	return fpscap
 end
 
-env.setscriptbytecode = function(script: Instance, bytecode: string)
+env.setscriptbytecode = function(script: Instance, bytecode: string, raw: boolean)
 	local obj = Instance.new("ObjectValue", Pointer)
 	obj.Name = hs:GenerateGUID(false)
 	obj.Value = script
 
 	nukedata(bytecode, "setscriptbytecode", {
-		["cn"] = obj.Name
+		cn = obj.Name,
+		raw = raw or false
 	})
 
 	obj:Destroy()
@@ -523,7 +524,7 @@ env.loadstring = function(code, chunkname)
 		return nil, "Compile Failed!"
 	end
 
-	env.setscriptbytecode(Load, bytecode)
+	env.setscriptbytecode(Load, bytecode, true)
 
 	local suc, res = pcall(function()
 		return debug.loadmodule(Load)
