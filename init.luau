@@ -318,7 +318,7 @@ env.writefile = function(path, data)
 
 	local result = nukedata("", "writefile", {
 		p = path,
-		c = data
+		c = BASE64ENCODE(data)
 	})
 
 	-- returns "" on success, or "error: ..." on failure
@@ -336,7 +336,7 @@ env.appendfile = function(path, data)
 
 	local result = nukedata("", "appendfile", {
 		p = path,
-		c = data
+		c = BASE64ENCODE(data)
 	})
 
 	return result
