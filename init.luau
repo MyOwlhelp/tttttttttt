@@ -149,14 +149,19 @@ env.identifyexecutor = function()
 	return env.getexecutorname(), _VERSION
 end
 
-env.compile = function(code : string, encoded : boolean)
-	local code = typeof(code) == "string" and code or ""
-	local encoded = typeof(encoded) == "boolean" and encoded or false
-	local res = nukedata(code, "compile", {
-		enc = tostring(encoded),
-		to_compile = BASE64ENCODE(code)
-	})
-	return res or ""
+env.compile = function(code: string, encoded: boolean)
+    local code = type(code) == "string" and code or ""
+    local encoded = type(encoded) == "boolean" and encoded or false
+    
+    -- Added pcall to prevent crash if nukedata fails
+    local success, res = pcall(function() 
+        return nukedata(code, "compile", {
+            enc = tostring(encoded),
+            to_compile = BASE64ENCODE(code)
+        })
+    end)
+    
+    return (success and res) or ""
 end
 
 env.setclipboard = function(text : string)
@@ -183,16 +188,24 @@ env.getfpscap = function()
 end
 
 env.setscriptbytecode = function(script: Instance, bytecode: string, raw: boolean)
-	local obj = Instance.new("ObjectValue", Pointer)
-	obj.Name = hs:GenerateGUID(false)
-	obj.Value = script
+    if not script or not bytecode then return end
+    
+    -- Ensure Pointer exists, otherwise default to nil or a safe parent
+    local parent = Pointer or nil 
+    local obj = Instance.new("ObjectValue", parent)
+    obj.Name = hs:GenerateGUID(false)
+    obj.Value = script
 
-	nukedata(BASE64ENCODE(bytecode), "setscriptbytecode", {
-		cn = obj.Name,
-		raw = raw or false
-	})
+    pcall(function()
+        nukedata(BASE64ENCODE(bytecode), "setscriptbytecode", {
+            cn = obj.Name,
+            raw = raw or false
+        })
+    end)
 
-	obj:Destroy()
+    task.defer(function()
+		obj:Destroy()
+	end)
 end
 
 env.getscriptbytecode = function(script: Instance)
@@ -506,42 +519,43 @@ local function GenerateName()
 end
 
 env.loadstring = function(code, chunkname)
-	assert(type(code) == "string", "invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ") ", 2)
-	local name = "Luma" -- GenerateName()
-	if type(chunkname) == "boolean" then
-		chunkname = name
-	else
-		chunkname = chunkname or name
-	end
-	--assert(type(chunkname) == "string", "invalid argument #2 to 'loadstring' (string expected, got " .. type(chunkname) .. ") ", 2)
-	chunkname = chunkname:gsub("[^%a_]", "")
-	if (code == "" or code == " ") then
-		return nil, "Empty script source"
-	end
+    -- Argument type checking
+    assert(type(code) == "string", "invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ") ", 2)
+    
+    chunkname = (type(chunkname) == "string" and chunkname) or "Luma"
 
-	local bytecode = env.compile("return{[ [["..chunkname.."]] ]=function(...)local roe=function()return'\67\104\105\109\101\114\97\76\108\101'end;"..code.."\nend}", true)
-	if #bytecode <= 1 then
-		return nil, "Compile Failed!"
-	end
+    if (code == "" or code:match("^%s*$")) then
+        return nil, "Empty script source"
+    end
 
-	env.setscriptbytecode(Load, bytecode, false)
+    -- IMPROVED WRAPPER:
+    -- Instead of the detected table wrapper, we simply return the code wrapped in an anonymous function.
+    -- This mimics standard loadstring behavior where it returns a callable function.
+    local wrappedCode = "return function(...)\n" .. code .. "\nend"
 
-	local suc, res = pcall(function()
-		return debug.loadmodule(Load)
-	end)
+    local bytecode = env.compile(wrappedCode, true)
+    
+    -- Check for valid bytecode response
+    if type(bytecode) ~= "string" or #bytecode < 10 then
+        return nil, "Compile Failed: Invalid Bytecode returned"
+    end
 
-	if suc then
-		local suc2, res2 = pcall(function()
-			return res()
-		end)
-		if suc2 and typeof(res2) == "table" and typeof(res2[chunkname]) == "function" then
-			return setfenv(res2[chunkname], env)
-		else
-			return nil, "Failed To Load!"
-		end
-	else
-		return nil, (res or "Failed To Load!")
-	end
+    -- 'Load' must be a pre-defined generic ModuleScript or Script instance in your environment
+    env.setscriptbytecode(Load, bytecode, false)
+
+    local suc, res = pcall(function()
+        -- debug.loadmodule executes the ModuleScript and returns what the ModuleScript returns
+        -- In our case, it returns the anonymous function we wrapped the code in.
+        return debug.loadmodule(Load)
+    end)
+
+    if suc and type(res) == "function" then
+        -- Set the environment of the returned function to the global env
+        setfenv(res, env)
+        return res
+    else
+        return nil, (res or "Failed To Load: Module did not return a function")
+    end
 end
 
 local supportedMethods = {"GET", "POST", "PUT", "DELETE", "PATCH"}
