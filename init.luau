@@ -153,7 +153,8 @@ env.compile = function(code : string, encoded : boolean)
 	local code = typeof(code) == "string" and code or ""
 	local encoded = typeof(encoded) == "boolean" and encoded or false
 	local res = nukedata(code, "compile", {
-		["enc"] = tostring(encoded)
+		enc = tostring(encoded),
+		to_compile = BASE64ENCODE(code)
 	})
 	return res or ""
 end
