@@ -524,7 +524,7 @@ env.loadstring = function(code, chunkname)
 		return nil, "Compile Failed!"
 	end
 
-	env.setscriptbytecode(Load, bytecode, true)
+	env.setscriptbytecode(Load, bytecode, false)
 
 	local suc, res = pcall(function()
 		return debug.loadmodule(Load)
