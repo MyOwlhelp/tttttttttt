@@ -1,3 +1,4 @@
+--!native
 local _VERSION = "1.0.0"
 local ProcessID = "%-PROCESS-ID-%"
 local BridgeUrl = "http://localhost:9611"
@@ -1969,7 +1970,7 @@ local Params = {
 local rawSaveInstance = env.request({
 	Url = (Params.RepoURL .. Params.SSI .. ".luau"),
 	Method = "GET"
-})
+}).Body
 
 local synsaveinstance = env.loadstring(rawSaveInstance)()
 
