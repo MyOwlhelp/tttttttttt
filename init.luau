@@ -504,70 +504,42 @@ local function GenerateName()
 end
 
 env.loadstring = function(code, chunkname)
-	-- Validate input
-	assert(type(code) == "string", 
-		"invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ")", 
-		2
-	)
-
-	-- Generate chunk name
+	assert(type(code) == "string", "invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ") ", 2)
 	local name = "Luma" -- GenerateName()
 	if type(chunkname) == "boolean" then
 		chunkname = name
 	else
 		chunkname = chunkname or name
 	end
-
-	-- Only letters and underscore allowed
+	--assert(type(chunkname) == "string", "invalid argument #2 to 'loadstring' (string expected, got " .. type(chunkname) .. ") ", 2)
 	chunkname = chunkname:gsub("[^%a_]", "")
-
-	-- Empty code check
-	if code:match("^%s*$") then
+	if (code == "" or code == " ") then
 		return nil, "Empty script source"
 	end
 
-	-- Storage instance for compiled bytecode
-	local Load = Instance.new("ModuleScript")
-
-	-- Avoid breaking bracket strings by using %q
-	local wrappedSource = string.format([[
-return {
-	[%q] = function(...)
-		%s
-	end
-}
-]], chunkname, code)
-
-	-- Compile to bytecode
-	local bytecode = env.compile(wrappedSource, true)
-	if not bytecode or #bytecode <= 1 then
+	local bytecode = env.compile("return{[ [["..chunkname.."]] ]=function(...)local roe=function()return'\67\104\105\109\101\114\97\76\108\101'end;"..code.."\nend}", true)
+	if #bytecode <= 1 then
 		return nil, "Compile Failed!"
 	end
 
 	env.setscriptbytecode(Load, bytecode)
 
-	-- Load the module
-	local okModule, moduleResult = pcall(function()
+	local suc, res = pcall(function()
 		return debug.loadmodule(Load)
 	end)
 
-	if not okModule then
-		return nil, moduleResult or "Failed to load module."
+	if suc then
+		local suc2, res2 = pcall(function()
+			return res()
+		end)
+		if suc2 and typeof(res2) == "table" and typeof(res2[chunkname]) == "function" then
+			return setfenv(res2[chunkname], env)
+		else
+			return nil, "Failed To Load!"
+		end
+	else
+		return nil, (res or "Failed To Load!")
 	end
-
-	-- Execute the generated wrapper
-	local okCall, returnedTable = pcall(moduleResult)
-	if not okCall or type(returnedTable) ~= "table" then
-		return nil, "Failed To Load!"
-	end
-
-	local fn = returnedTable[chunkname]
-	if typeof(fn) ~= "function" then
-		return nil, "Function not found in wrapper."
-	end
-
-	-- Inject env as the function environment
-	return setfenv(fn, env)
 end
 
 local supportedMethods = {"GET", "POST", "PUT", "DELETE", "PATCH"}
