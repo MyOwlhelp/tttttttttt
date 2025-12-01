@@ -519,7 +519,9 @@ env.loadstring = function(code, chunkname)
 		return nil, "Empty script source"
 	end
 
-	local bytecode = env.compile("return{[ [["..chunkname.."]] ]=function(...)local roe=function()return'\67\104\105\109\101\114\97\76\108\101'end;"..code.."\nend}", true)
+	local useNative = string.find(code, "--!native") and false or true
+
+	local bytecode = env.compile((useNative and "--!native\n" or "") .. "return{[ [["..chunkname.."]] ]=function(...)local roe=function()return'\67\104\105\109\101\114\97\76\108\101'end;"..code.."\nend}", true)
 	if #bytecode <= 1 then
 		return nil, "Compile Failed!"
 	end
@@ -1962,7 +1964,7 @@ if DecompileYe and DecompileYe.Body then
 	end
 end
 
-local Params = {
+--[[local Params = {
 	RepoURL = "https://raw.githubusercontent.com/luau/SynSaveInstance/main/",
 	SSI = "saveinstance",
 }
@@ -1974,9 +1976,9 @@ local rawSaveInstance = env.request({
 
 local synsaveinstance = env.loadstring(rawSaveInstance)()
 
-env.saveinstance = function(options: table)
+env.saveinstance = function(options)
 	return synsaveinstance(options or {})
-end
+end]]
 
 doInfo("Luma Injected!")
 
