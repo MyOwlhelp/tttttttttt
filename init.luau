@@ -31,7 +31,7 @@ Bridge.Name = "Bridge"
 Bridge.Parent = Luma
 
 script.Name = "CoreScript/Environment"
-script.Parent = sc
+script.Parent = Luma
 
 local plr = ps.LocalPlayer
 
