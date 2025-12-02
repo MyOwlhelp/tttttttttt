@@ -31,7 +31,7 @@ Bridge.Name = "Bridge"
 Bridge.Parent = Luma
 
 script.Name = "CoreScript/Environment"
-script.Parent = Luma
+script.Parent = nil
 
 local plr = ps.LocalPlayer
 
@@ -104,7 +104,7 @@ end
 
 local DECODE_TABLE = {}
 for i = 1, #BASE64_CHARS do
-	DECODE_TABLE[BASE64_CHARS:sub(i,i)] = i - 1
+	DECODE_TABLE[string.sub(BASE64_CHARS, i, i)] = i - 1
 end
 
 local function BASE64ENCODE(data: string): string
@@ -122,11 +122,11 @@ local function BASE64ENCODE(data: string): string
 		local c3 = math.floor(n / 64) % 64 + 1
 		local c4 = n % 64 + 1
 
-		table.insert(result, BASE64_CHARS:sub(c1, c1))
-		table.insert(result, BASE64_CHARS:sub(c2, c2))
+		table.insert(result, string.sub(BASE64_CHARS, c1, c1))
+		table.insert(result, string.sub(BASE64_CHARS, c2, c2))
 
-		table.insert(result, i+1 > #data and "=" or BASE64_CHARS:sub(c3, c3))
-		table.insert(result, i+2 > #data and "=" or BASE64_CHARS:sub(c4, c4))
+		table.insert(result, i+1 > #data and "=" or string.sub(BASE64_CHARS, c3, c3))
+		table.insert(result, i+2 > #data and "=" or string.sub(BASE64_CHARS, c4, c4))
 
 		i = i + 3
 	end
@@ -139,10 +139,10 @@ local function BASE64DECODE(data: string): string
 
 	local i = 1
 	while i <= #data do
-		local c1 = DECODE_TABLE[data:sub(i,i)] or 0
-		local c2 = DECODE_TABLE[data:sub(i+1,i+1)] or 0
-		local c3 = DECODE_TABLE[data:sub(i+2,i+2)] or 0
-		local c4 = DECODE_TABLE[data:sub(i+3,i+3)] or 0
+		local c1 = DECODE_TABLE[string.sub(data, i, i)] or 0
+		local c2 = DECODE_TABLE[string.sub(data, i + 1, i + 1)] or 0
+		local c3 = DECODE_TABLE[string.sub(data, i + 2, i + 2)] or 0
+		local c4 = DECODE_TABLE[string.sub(data, i + 3, i + 3)] or 0
 
 		local n = c1 * 262144 + c2 * 4096 + c3 * 64 + c4
 
@@ -184,7 +184,7 @@ env.error = function(...)
 	return oError(...)
 end
 
-doInfo("Parent: " .. tostring(cpkgs))
+--doInfo("Parent: " .. tostring(cpkgs))
 doInfo("Loading Environment...")
 
 cclosures[env.print] = true
@@ -575,35 +575,57 @@ local function GenerateName()
 end
 
 env.loadstring = function(code, chunkname)
-	assert(type(code) == "string", "invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ") ", 2)
-	chunkname = string.gsub(((type(chunkname) == "string" and chunkname) or "Luma"), "[^%a_]", "")
-	if (code == "" or code == " ") then
+	-- 1. Strict Argument Type Checking
+	if type(code) ~= "string" then
+		error("invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ")", 2)
+	end
+
+	-- 2. Check for empty or whitespace-only scripts
+	if code:match("^%s*$") then
 		return nil, "Empty script source"
 	end
 
-	local bytecode = env.compile("return{[ [["..chunkname.."]] ]=function(...)local roe=function()return'\67\104\105\109\101\114\97\76\108\101'end;"..code.."\nend}", true)
-	if #bytecode <= 1 then
+	-- 3. Sanitize Chunkname
+	-- Defaults to "Luma", removes special characters to ensure valid table key
+	chunkname = (type(chunkname) == "string" and chunkname) or GenerateName()
+	local safeName = string.gsub(chunkname, "[^%w_]", "")
+	if safeName == "" then safeName = "Luma" end
+
+	-- 4. Wrapper Construction
+	-- We insert a newline (\n) before the closing 'end' to prevent the user's code
+	-- from commenting out the syntax if it ends with '--'
+	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...) " .. code .. "\n end }"
+
+	-- 5. Compilation
+	local bytecode = env.compile(wrapper, true)
+	if type(bytecode) ~= "string" or #bytecode <= 1 then
 		return nil, "Compile Failed!"
 	end
 
+	-- 6. Loading Bytecode
+	-- Assumes 'Load' is an upvalue (likely a ModuleScript) defined externally
 	env.setscriptbytecode(Load, bytecode)
 
-	local suc, res = pcall(function()
-		return debug.loadmodule(Load)
-	end)
-
-	if suc then
-		local suc2, res2 = pcall(function()
-			return res()
-		end)
-		if suc2 and typeof(res2) == "table" and typeof(res2[chunkname]) == "function" then
-			return setfenv(res2[chunkname], env)
-		else
-			return nil, "Failed To Load!"
-		end
-	else
-		return nil, (res or "Failed To Load!")
+	local loadSuccess, loadResult = pcall(debug.loadmodule, Load)
+	if not loadSuccess then
+		return nil, (loadResult or "Failed to load module")
 	end
+
+	-- 7. Execution and Extraction
+	local execSuccess, execResult = pcall(loadResult)
+	if not execSuccess then
+		return nil, (execResult or "Failed during execution")
+	end
+
+	-- 8. Validation and Environment Setup
+	if type(execResult) == "table" and type(execResult[safeName]) == "function" then
+		local func = execResult[safeName]
+		setfenv(func, env)
+		script.Name = string.format("[string %q]", safeName)
+		return func
+	end
+
+	return nil, "Failed to extract function from loaded chunk"
 end
 
 local supportedMethods = {"GET", "POST", "PUT", "DELETE", "PATCH"}
