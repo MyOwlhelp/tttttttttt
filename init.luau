@@ -190,7 +190,7 @@ env.error = function(...)
 	return oError(...)
 end
 
-doInfo("Parent: " .. cpkgs)
+doInfo("Parent: " .. tostring(cpkgs))
 doInfo("Loading Environment...")
 
 cclosures[env.print] = true
