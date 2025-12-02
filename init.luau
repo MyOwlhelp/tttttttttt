@@ -212,18 +212,18 @@ env.identifyexecutor = function()
 end
 
 env.compile = function(code: string, encoded: boolean)
-    local code = type(code) == "string" and code or ""
-    local encoded = type(encoded) == "boolean" and encoded or false
-    
-    -- Added pcall to prevent crash if nukedata fails
-    local success, res = pcall(function() 
-        return nukedata(code, "compile", {
-            enc = tostring(encoded),
-            to_compile = BASE64ENCODE(code)
-        })
-    end)
-    
-    return (success and res) or ""
+	local code = type(code) == "string" and code or ""
+	local encoded = type(encoded) == "boolean" and encoded or false
+
+	-- Added pcall to prevent crash if nukedata fails
+	local success, res = pcall(function() 
+		return nukedata(code, "compile", {
+			enc = tostring(encoded),
+			to_compile = BASE64ENCODE(code)
+		})
+	end)
+
+	return (success and res) or ""
 end
 
 env.setclipboard = function(text : string)
@@ -250,22 +250,22 @@ env.getfpscap = function()
 end
 
 env.setscriptbytecode = function(script: Instance, bytecode: string, raw: boolean)
-    if not script or not bytecode then return end
-    
-    -- Ensure Pointer exists, otherwise default to nil or a safe parent
-    local parent = Pointer or nil 
-    local obj = Instance.new("ObjectValue", parent)
-    obj.Name = hs:GenerateGUID(false)
-    obj.Value = script
+	if not script or not bytecode then return end
 
-    pcall(function()
-        nukedata(BASE64ENCODE(bytecode), "setscriptbytecode", {
-            cn = obj.Name,
-            raw = raw or false
-        })
-    end)
+	-- Ensure Pointer exists, otherwise default to nil or a safe parent
+	local parent = Pointer or nil 
+	local obj = Instance.new("ObjectValue", parent)
+	obj.Name = hs:GenerateGUID(false)
+	obj.Value = script
 
-    task.defer(function()
+	pcall(function()
+		nukedata(BASE64ENCODE(bytecode), "setscriptbytecode", {
+			cn = obj.Name,
+			raw = raw or false
+		})
+	end)
+
+	task.defer(function()
 		obj:Destroy()
 	end)
 end
@@ -377,7 +377,7 @@ env.consoleprint = env.rconsoleprint
 -- readfile: sends key "p", returns raw string
 env.readfile = function(path)
 	assert(type(path) == "string", "readfile expected string path")
-	assert(isfile(path), "readfile expected an existed file")
+	assert(env.isfile(path), "readfile expected an existed file")
 
 	local result = nukedata("", "readfile", {
 		p = path
@@ -406,7 +406,7 @@ end
 -- appendfile: send path as "p", content as "c"
 env.appendfile = function(path, data)
 	assert(type(path) == "string", "appendfile expected string path")
-	assert(isfile(path), "appendfile expected an existed file")
+	assert(env.isfile(path), "appendfile expected an existed file")
 
 	--assert(type(data) == "string", "appendfile expected string data")
 
@@ -457,7 +457,7 @@ end
 -- delfile/delfolder: keep as-is but use "p"
 env.delfile = function(path)
 	assert(type(path) == "string", "delfile expected string path")
-	assert(isfile(path), "delfile expected an existed file")
+	assert(env.isfile(path), "delfile expected an existed file")
 
 	local result = nukedata("", "delfile", {
 		p = path
@@ -468,7 +468,7 @@ end
 
 env.delfolder = function(path)
 	assert(type(path) == "string", "delfolder expected string path")
-	assert(isfolder(path), "delfolder expected an existed folder")
+	assert(env.isfolder(path), "delfolder expected an existed folder")
 
 	local result = nukedata("", "delfolder", {
 		p = path
@@ -1857,6 +1857,7 @@ local HashRes = env.request({
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/hash",
 	Method = "GET"
 })
+
 local HashLib = {}
 
 if HashRes and HashRes.Body then
@@ -2002,105 +2003,103 @@ function Signal:Fire(...)
 end
 
 function Signal:Wait()
-    local waiting = true
-    local res
-    local c
-    c = self:Connect(function(...)
-        res = {...}
-        waiting = false
-        c:Disconnect()
-    end)
-    repeat task.wait() until not waiting
-    return unpack(res)
+	local waiting = true
+	local res
+	local c
+	c = self:Connect(function(...)
+		res = {...}
+		waiting = false
+		c:Disconnect()
+	end)
+	repeat task.wait() until not waiting
+	return unpack(res)
 end
 
 -- 2. WebSocket Library Implementation
 env.WebSocket = {}
 env.WebSocket.connect = function(url)
-    -- Input Validation
-    if type(url) ~= "string" then 
-        return error("WebSocket.connect: URL must be a string") 
-    end
+	-- Input Validation
+	if type(url) ~= "string" then 
+		return error("WebSocket.connect: URL must be a string") 
+	end
 
-    -- A. CONNECT: Send request to C++ to start the socket
-    -- We use crypt.base64 to ensure the URL passes safely through JSON
-    local sid = nukedata("", "websocket.connect", {
-        url = BASE64ENCODE(url)
-    })
+	-- A. CONNECT: Send request to C++ to start the socket
+	-- We use crypt.base64 to ensure the URL passes safely through JSON
+	local sid = nukedata("", "websocket.connect", {
+		url = BASE64ENCODE(url)
+	})
 
-    -- Check if C++ returned a valid Session ID
-    if not sid or sid == "" or sid:find("error") then
-        return error("WebSocket Connection Failed: " .. tostring(sid))
-    end
+	-- Check if C++ returned a valid Session ID
+	if not sid or sid == "" or sid:find("error") then
+		return error("WebSocket Connection Failed: " .. tostring(sid))
+	end
 
-    -- Create the Object
-    local ws = {}
-    ws.OnMessage = Signal.new()
-    ws.OnClose = Signal.new()
-    local isOpen = true
+	-- Create the Object
+	local ws = {}
+	ws.OnMessage = Signal.new()
+	ws.OnClose = Signal.new()
+	local isOpen = true
 
-    -- B. SEND: Sends message to C++ -> WebSocket
-    function ws:Send(msg)
-        if not isOpen then return error("WebSocket is closed") end
-        
-        -- We encode the message to Base64 so C++ can decode it safely
-        -- This supports binary data and prevents JSON syntax errors
-        nukedata("", "websocket.send", {
-            sid = sid,
-            msg = BASE64ENCODE(tostring(msg))
-        })
-    end
+	-- B. SEND: Sends message to C++ -> WebSocket
+	function ws:Send(msg)
+		if not isOpen then return error("WebSocket is closed") end
 
-    -- C. CLOSE: Tells C++ to stop the thread
-    function ws:Close()
-        if not isOpen then return end
-        isOpen = false
-        
-        nukedata("", "websocket.close", {
-            sid = sid
-        })
-        
-        ws.OnClose:Fire()
-    end
+		-- We encode the message to Base64 so C++ can decode it safely
+		-- This supports binary data and prevents JSON syntax errors
+		nukedata("", "websocket.send", {
+			sid = sid,
+			msg = BASE64ENCODE(tostring(msg))
+		})
+	end
 
-    -- D. POLLING LOOP: The "Heart" of the bridge
-    -- Since HTTP is request-response, we must keep asking C++ "Any new messages?"
-    task.spawn(function()
-        while isOpen do
-            local success, response = pcall(function() 
-                return nukedata("", "websocket.poll", { sid = sid }) 
-            end)
+	-- C. CLOSE: Tells C++ to stop the thread
+	function ws:Close()
+		if not isOpen then return end
+		isOpen = false
 
-            if success and response and response ~= "" and response ~= "[]" then
-                -- Decode the JSON array returned by C++
-                local jsonSuccess, messages = pcall(hs.JSONDecode, hs, response)
-                
-                if jsonSuccess and messages then
-                    for _, msg in ipairs(messages) do
-                        if msg == "##CLOSED##" then
-                            -- Special flag from C++ indicating socket died/closed
-                            if isOpen then
-                                isOpen = false
-                                ws.OnClose:Fire()
-                            end
-                            return -- Stop the loop
-                        else
-                            -- Normal message
-                            ws.OnMessage:Fire(msg)
-                        end
-                    end
-                end
-            end
-            
-            -- Wait 50ms to prevent freezing the game (20 checks per second)
-            task.wait(0.05) 
-        end
-    end)
+		nukedata("", "websocket.close", {
+			sid = sid
+		})
 
-    return ws
+		ws.OnClose:Fire()
+	end
+
+	-- D. POLLING LOOP: The "Heart" of the bridge
+	-- Since HTTP is request-response, we must keep asking C++ "Any new messages?"
+	task.spawn(function()
+		while isOpen do
+			local success, response = pcall(function() 
+				return nukedata("", "websocket.poll", { sid = sid }) 
+			end)
+
+			if success and response and response ~= "" and response ~= "[]" then
+				-- Decode the JSON array returned by C++
+				local jsonSuccess, messages = pcall(hs.JSONDecode, hs, response)
+
+				if jsonSuccess and messages then
+					for _, msg in ipairs(messages) do
+						if msg == "##CLOSED##" then
+							-- Special flag from C++ indicating socket died/closed
+							if isOpen then
+								isOpen = false
+								ws.OnClose:Fire()
+							end
+							return -- Stop the loop
+						else
+							-- Normal message
+							ws.OnMessage:Fire(msg)
+						end
+					end
+				end
+			end
+
+			-- Wait 50ms to prevent freezing the game (20 checks per second)
+			task.wait(0.05) 
+		end
+	end)
+
+	return ws
 end
-
-setreadonly(env.WebSocket, true)
 
 -- listener
 
