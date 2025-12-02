@@ -70,7 +70,7 @@ local fpscap = math.huge
 
 local hasConsole = false
 
-local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+local BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 local Vernushwd = "Luma-HWID-" .. plr.UserId
 
@@ -115,16 +115,57 @@ local function nukedata(dta, typ, set)
 	return result and result.Body or ""
 end
 
-local function BASE64ENCODE(data)
-	return nukedata("", "_encode_base64", {
-		["to_encode"] = data
-	})
+local DECODE_TABLE = {}
+for i = 1, #BASE64_CHARS do
+	DECODE_TABLE[BASE64_CHARS:sub(i,i)] = i - 1
 end
 
-local function BASE64DECODE(data)
-	return nukedata("", "_decode_base64", {
-		["to_decode"] = data
-	})
+local function BASE64ENCODE(data: string): string
+	local result = {}
+	local i = 1
+	while i <= #data do
+		local b1 = data:byte(i) or 0
+		local b2 = data:byte(i+1) or 0
+		local b3 = data:byte(i+2) or 0
+
+		local n = b1 * 65536 + b2 * 256 + b3
+
+		local c1 = math.floor(n / 262144) % 64 + 1
+		local c2 = math.floor(n / 4096) % 64 + 1
+		local c3 = math.floor(n / 64) % 64 + 1
+		local c4 = n % 64 + 1
+
+		table.insert(result, BASE64_CHARS:sub(c1, c1))
+		table.insert(result, BASE64_CHARS:sub(c2, c2))
+
+		table.insert(result, i+1 > #data and "=" or BASE64_CHARS:sub(c3, c3))
+		table.insert(result, i+2 > #data and "=" or BASE64_CHARS:sub(c4, c4))
+
+		i = i + 3
+	end
+	return table.concat(result)
+end
+
+local function BASE64DECODE(data: string): string
+	data = data:gsub("=", "")
+	local result = {}
+
+	local i = 1
+	while i <= #data do
+		local c1 = DECODE_TABLE[data:sub(i,i)] or 0
+		local c2 = DECODE_TABLE[data:sub(i+1,i+1)] or 0
+		local c3 = DECODE_TABLE[data:sub(i+2,i+2)] or 0
+		local c4 = DECODE_TABLE[data:sub(i+3,i+3)] or 0
+
+		local n = c1 * 262144 + c2 * 4096 + c3 * 64 + c4
+
+		table.insert(result, string.char(math.floor(n / 65536) % 256))
+		if i+2 <= #data then table.insert(result, string.char(math.floor(n / 256) % 256)) end
+		if i+3 <= #data then table.insert(result, string.char(n % 256)) end
+
+		i = i + 4
+	end
+	return table.concat(result)
 end
 
 local function doOutput(t, ...)
