@@ -2000,7 +2000,8 @@ end)]]
 
 local BC = env.compile(yess, true)
 env.setscriptbytecode(Exec, BC)
-require(Exec)
+debug.loadmodule(Exec)
+--require(Exec)
 
 --[[task.spawn(function()
 	while true do
