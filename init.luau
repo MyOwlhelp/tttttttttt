@@ -9,15 +9,31 @@ local is = game:GetService("InsertService")
 local ps = game:GetService("Players")
 
 local oParent = script.Parent
+local cpkgs = oParent.Parent.Parent.Parent.Parent
 
 local oPrint = print
 local oWarn = warn
 local oError = error
 
+local Luma = Instance.new("Folder")
+Luma.Name = "Luma"
+Luma.Parent = cpkgs
+
+local Executions = Instance.new("Folder")
+Executions.Name = "Executions"
+Executions.Parent = Luma
+
+script:Clone().Parent = oParent -- Jest
+
+script.Name = "Environment"
+script.Parent = Luma
+
 local ExternalExecutor = Instance.new("Folder", cg)
 ExternalExecutor.Name = "ExternalExecutor"
+
 local Pointer = Instance.new("Folder", ExternalExecutor)
 Pointer.Name = "Pointer"
+
 local Bridge = Instance.new("Folder", ExternalExecutor)
 Bridge.Name = "Bridge"
 
@@ -29,6 +45,15 @@ local rs = cg:FindFirstChild("RobloxGui")
 local ms = rs:FindFirstChild("Modules")
 local cm = ms:FindFirstChild("Common")
 local Load = cm:FindFirstChild("CommonUtil")
+
+local LoadParent = Load.Parent
+
+Load.Name = "LuaVM" --hs:GenerateGUID(false)
+Load.Parent = Executions
+
+local tttt = Load:Clone()
+tttt.Name = "CommonUtil"
+tttt.Parent = LoadParent
 
 local cclosures = setmetatable({}, { __mode = "k" })
 
@@ -228,6 +253,43 @@ env.getscriptbytecode = function(script: Instance)
 end
 
 env.dumpstring = env.getscriptbytecode
+
+local function luaVM_load(content: string)
+	assert(type(content) == "string", "luaVM_load expected string as argument #1")
+	
+	-- compile code into bytecode
+	local suc, compiled = pcall(function()
+		return env.compile("return function() " .. content .. " end", true)
+	end)
+
+	if not suc then
+		env.warn("luaVM_load failed to compile: " .. compiled)
+		return nil, compiled
+	end
+
+	-- inject the bytecode into the LuaVM module
+	local encoded = BASE64ENCODE(compiled)
+
+	nukedata("", "load", {
+		to_load = encoded
+	})
+
+	-- reload the module
+	local ok, moduleFunc = pcall(function()
+		return debug.loadmodule(Load)
+	end)
+
+	if not ok then
+		return nil, moduleFunc
+	end
+	
+	-- apply environment
+	setfenv(moduleFunc, env)
+
+	return moduleFunc
+end
+
+luaVM_load("print'Helooooooo'")()
 
 --[[env.decompile = function(script: LuaSourceContainer)
 	-- doesn't have decompile yet
@@ -1957,15 +2019,16 @@ task.spawn(function()
 		end
 		if res and #res > 1 then
 			task.spawn(function()
-				local func, funcerr = env.loadstring(res)
-				if func then
-					--setfenv(func, env)
-					local suc, err = pcall(func)
+				local loaded, ee = luaVM_load(res)
+				if loaded then
+					local suc,ress = pcall(loaded)
 					if not suc then
-						warn(err)
+						env.warn(ress)
+						return ress
 					end
+					return ress
 				else
-					warn(funcerr)
+					env.warn(ee)
 				end
 			end)
 		end
