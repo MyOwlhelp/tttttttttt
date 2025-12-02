@@ -31,10 +31,10 @@ local Bridge = Instance.new("Folder")
 Bridge.Name = "Bridge"
 Bridge.Parent = Luma
 
-script:Clone().Parent = oParent -- Jest
+--[[script:Clone().Parent = oParent -- Jest
 
 script.Name = "Environment"
-script.Parent = Luma
+script.Parent = Luma]]
 
 local plr = ps.LocalPlayer
 
@@ -2052,7 +2052,7 @@ task.spawn(function()
 	while true do
 		local res = nukedata("", "listen")
 		if typeof(res) == "table" then
-			ExternalExecutor:Destroy()
+			Luma:Destroy()
 			break
 		end
 		if res and #res > 1 then
