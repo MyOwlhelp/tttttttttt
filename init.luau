@@ -566,7 +566,7 @@ local function GenerateName()
 	local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	local name = {}
 
-	for i = 1, 10 do
+	for i = 1, 5 do
 		local randIndex = math.random(1, #chars)
 		name[i] = string.sub(chars, randIndex, randIndex)
 	end
@@ -597,11 +597,9 @@ env.loadstring = function(code, chunkname)
 	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...) " .. code .. "\n end }"
 
 	-- 5. Compilation
-	local compileSuccess, compileResult = pcall(env.compile, wrapper, true)
-	if not compileSuccess or type(bytecode) ~= "string" or #bytecode <= 1 then
-		env.error(compileResult)
-		return nil, ""
-		--return nil, "Compile Failed!"
+	local bytecode = env.compile(wrapper, true)
+	if type(bytecode) ~= "string" or #bytecode <= 1 then
+		return nil, "Compile Failed!"
 	end
 
 	-- 6. Loading Bytecode
@@ -610,17 +608,13 @@ env.loadstring = function(code, chunkname)
 
 	local loadSuccess, loadResult = pcall(debug.loadmodule, Load)
 	if not loadSuccess then
-		env.error(loadResult)
-		return nil, ""
-		--return nil, (loadResult or "Failed to load module")
+		return nil, (loadResult or "Failed to load module")
 	end
 
 	-- 7. Execution and Extraction
 	local execSuccess, execResult = pcall(loadResult)
 	if not execSuccess then
-		env.error(execResult)
-		return nil, ""
-		--return nil, (execResult or "Failed during execution")
+		return nil, (execResult or "Failed during execution")
 	end
 
 	-- 8. Validation and Environment Setup
