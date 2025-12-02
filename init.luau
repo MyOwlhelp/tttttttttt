@@ -1970,135 +1970,120 @@ env.isexecutorclosure = function(func)
 end
 env.isourclosure = env.isexecutorclosure
 
--- 1. Signal Class (Standard Event Handling for OnMessage/OnClose)
-local Signal = {}
-Signal.__index = Signal
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
-function Signal.new()
-	return setmetatable({ _callbacks = {} }, Signal)
+local function NewSignal()
+    local sig = {}
+    local callbacks = {}
+    
+    function sig:Connect(callback)
+        local item = { fn = callback }
+        table.insert(callbacks, item)
+        return {
+            Disconnect = function()
+                for i, v in ipairs(callbacks) do
+                    if v == item then table.remove(callbacks, i) break end
+                end
+            end
+        }
+    end
+    
+    function sig:Fire(...)
+        for _, item in ipairs(callbacks) do
+            task.spawn(item.fn, ...)
+        end
+    end
+    
+    return sig
 end
 
-function Signal:Connect(func)
-	local connection = {
-		_func = func,
-		_signal = self,
-		Connected = true,
-		Disconnect = function(self)
-			self.Connected = false
-			for i, v in pairs(self._signal._callbacks) do
-				if v == self then table.remove(self._signal._callbacks, i) break end
-			end
-		end
-	}
-	table.insert(self._callbacks, connection)
-	return connection
-end
-
-function Signal:Fire(...)
-	for _, connection in ipairs(self._callbacks) do
-		if connection.Connected then
-			task.spawn(connection._func, ...)
-		end
-	end
-end
-
-function Signal:Wait()
-	local waiting = true
-	local res
-	local c
-	c = self:Connect(function(...)
-		res = {...}
-		waiting = false
-		c:Disconnect()
-	end)
-	repeat task.wait() until not waiting
-	return unpack(res)
-end
-
--- 2. WebSocket Library Implementation
 env.WebSocket = {}
 env.WebSocket.connect = function(url)
-	-- Input Validation
-	if type(url) ~= "string" then 
-		return error("WebSocket.connect: URL must be a string") 
-	end
+    -- 1. Ask C++ to connect and get ID
+    -- We pass the URL here. C++ creates the socket and returns an integer ID.
+    local idStr = nukedata("", "websocket", {
+        cmd = "connect", 
+        url = B64Encode(url)
+    })
 
-	-- A. CONNECT: Send request to C++ to start the socket
-	-- We use crypt.base64 to ensure the URL passes safely through JSON
-	local sid = nukedata("", "websocket.connect", {
-		url = BASE64ENCODE(url)
-	})
+    local id = tonumber(idStr)
+    if not id then 
+        return error("WebSocket: Failed to connect (Invalid ID returned)") 
+    end
 
-	-- Check if C++ returned a valid Session ID
-	if not sid or sid == "" or sid:find("error") then
-		return error("WebSocket Connection Failed: " .. tostring(sid))
-	end
+    local ws = {}
+    
+    -- Initialize Signals
+    ws.OnMessage = NewSignal()
+    ws.OnClose = NewSignal()
+    ws.OnOpen = NewSignal() -- Optional, but good practice
+    ws.OnError = NewSignal()
 
-	-- Create the Object
-	local ws = {}
-	ws.OnMessage = Signal.new()
-	ws.OnClose = Signal.new()
-	local isOpen = true
+    local connection
+    local isClosed = false
 
-	-- B. SEND: Sends message to C++ -> WebSocket
-	function ws:Send(msg)
-		if not isOpen then return error("WebSocket is closed") end
+    -- 2. Polling Loop
+    -- We constantly ask C++ "Do you have messages for socket ID [x]?"
+    connection = RunService.Heartbeat:Connect(function()
+        if isClosed then 
+            connection:Disconnect() 
+            return 
+        end
 
-		-- We encode the message to Base64 so C++ can decode it safely
-		-- This supports binary data and prevents JSON syntax errors
-		nukedata("", "websocket.send", {
-			sid = sid,
-			msg = BASE64ENCODE(tostring(msg))
-		})
-	end
+        -- FIX: Use 'id', not 'url' for polling
+        local response = nukedata("", "websocket", {
+            cmd = "poll", 
+            id = id 
+        })
+        
+        -- Parse response (Expects a JSON string representing an array of events)
+        if response and response ~= "" and response ~= "[]" then
+            local success, events = pcall(HttpService.JSONDecode, HttpService, response)
+            
+            if success and events then
+                for _, event in ipairs(events) do
+                    if event.type == "OnMessage" then
+                        ws.OnMessage:Fire(event.data)
+                    elseif event.type == "OnOpen" then
+                        ws.OnOpen:Fire()
+                    elseif event.type == "OnError" then
+                        ws.OnError:Fire(event.data)
+                    elseif event.type == "OnClose" then
+                        isClosed = true
+                        ws.OnClose:Fire()
+                        connection:Disconnect()
+                    end
+                end
+            end
+        end
+    end)
 
-	-- C. CLOSE: Tells C++ to stop the thread
-	function ws:Close()
-		if not isOpen then return end
-		isOpen = false
+    -- 3. Methods
 
-		nukedata("", "websocket.close", {
-			sid = sid
-		})
+    ws.Send = function(self, data)
+        if isClosed then return end
+        nukedata("", "websocket", {
+            cmd = "send", 
+            id = id, 
+            data = B64Encode(data)
+        })
+    end
 
-		ws.OnClose:Fire()
-	end
+    ws.Close = function(self)
+        if isClosed then return end
+        isClosed = true
+        
+        nukedata("", "websocket", {
+            cmd = "close", 
+            id = id
+        })
+        
+        connection:Disconnect()
+        ws.OnClose:Fire()
+    end
 
-	-- D. POLLING LOOP: The "Heart" of the bridge
-	-- Since HTTP is request-response, we must keep asking C++ "Any new messages?"
-	task.spawn(function()
-		while isOpen do
-			local success, response = pcall(function() 
-				return nukedata("", "websocket.poll", { sid = sid }) 
-			end)
-
-			if success and response and response ~= "" and response ~= "[]" then
-				-- Decode the JSON array returned by C++
-				local jsonSuccess, messages = pcall(hs.JSONDecode, hs, response)
-
-				if jsonSuccess and messages then
-					for _, msg in ipairs(messages) do
-						if msg == "##CLOSED##" then
-							-- Special flag from C++ indicating socket died/closed
-							if isOpen then
-								isOpen = false
-								ws.OnClose:Fire()
-							end
-							return -- Stop the loop
-						else
-							-- Normal message
-							ws.OnMessage:Fire(msg)
-						end
-					end
-				end
-			end
-
-			-- Wait 50ms to prevent freezing the game (20 checks per second)
-			task.wait(0.05) 
-		end
-	end)
-
-	return ws
+    return ws
 end
 
 -- listener
