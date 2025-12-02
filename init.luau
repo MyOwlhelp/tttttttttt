@@ -23,19 +23,18 @@ local Executions = Instance.new("Folder")
 Executions.Name = "Executions"
 Executions.Parent = Luma
 
+local Pointer = Instance.new("Folder")
+Pointer.Name = "Pointer"
+Pointer.Parent = Luma
+
+local Bridge = Instance.new("Folder")
+Bridge.Name = "Bridge"
+Bridge.Parent = Luma
+
 script:Clone().Parent = oParent -- Jest
 
 script.Name = "Environment"
 script.Parent = Luma
-
-local ExternalExecutor = Instance.new("Folder", cg)
-ExternalExecutor.Name = "ExternalExecutor"
-
-local Pointer = Instance.new("Folder", ExternalExecutor)
-Pointer.Name = "Pointer"
-
-local Bridge = Instance.new("Folder", ExternalExecutor)
-Bridge.Name = "Bridge"
 
 local plr = ps.LocalPlayer
 
@@ -46,14 +45,8 @@ local ms = rs:FindFirstChild("Modules")
 local cm = ms:FindFirstChild("Common")
 local Load = cm:FindFirstChild("CommonUtil")
 
-local LoadParent = Load.Parent
-
-Load.Name = "LuaVM" --hs:GenerateGUID(false)
-Load.Parent = Executions
-
-local tttt = Load:Clone()
-tttt.Name = "CommonUtil"
-tttt.Parent = LoadParent
+--[[Load.Name = "LuaVM"
+Load.Parent = Executions]]
 
 local cclosures = setmetatable({}, { __mode = "k" })
 
@@ -197,6 +190,7 @@ env.error = function(...)
 	return oError(...)
 end
 
+doInfo("Parent: " .. cpkgs)
 doInfo("Loading Environment...")
 
 cclosures[env.print] = true
