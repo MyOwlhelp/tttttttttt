@@ -1801,7 +1801,26 @@ end
 
 crypt.decrypt = crypt.encrypt
 
-local HashRes = env.request({
+local function doHash(algo: table)
+	assert(type(algo) == "table", "crypt.hash expected table as argument #1")
+    
+    local success, res = pcall(function() 
+        return nukedata(code, "hash", {
+            al = algo
+        })
+    end)
+    
+	if not success then
+		env.warn(res)
+		return res
+	end
+
+    return (success and res) or ""
+end
+
+env.crypt.hash = doHash
+
+--[[local HashRes = env.request({ -- Old Hash
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/hash",
 	Method = "GET"
 })
@@ -1814,7 +1833,7 @@ if HashRes and HashRes.Body then
 	else
 		warn("HasbLib Failed To Load Error: " .. tostring(err))
 	end
-end
+end]]
 
 local DrawingRes = env.request({
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/drawinglib",
