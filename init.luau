@@ -289,46 +289,6 @@ end
 
 env.dumpstring = env.getscriptbytecode
 
-local function luaVM_load(content: string)
-	assert(type(content) == "string", "luaVM_load expected string as argument #1")
-	
-	-- compile code into bytecode
-	local suc, compiled = pcall(function()
-		return env.compile("return function() " .. content .. " end", true)
-	end)
-
-	if not suc then
-		env.warn("luaVM_load failed to compile: " .. compiled)
-		return nil, compiled
-	end
-
-	-- inject the bytecode into the LuaVM module
-
-	env.setscriptbytecode(Load, compiled)
-
-	--[[local encoded = BASE64ENCODE(compiled)
-
-	nukedata("", "load", {
-		to_load = encoded
-	})]]
-
-	-- reload the module
-	local ok, moduleFunc = pcall(function()
-		return debug.loadmodule(Load)
-	end)
-
-	if not ok then
-		return nil, moduleFunc
-	end
-	
-	-- apply environment
-	setfenv(moduleFunc, env)
-
-	return moduleFunc
-end
-
-luaVM_load("print'Helooooooo'")()
-
 --[[env.decompile = function(script: LuaSourceContainer)
 	-- doesn't have decompile yet
 	assert(script:IsA("LuaSourceContainer"), "decompile expected LuaSourceContainer")
@@ -1893,7 +1853,7 @@ end
 
 crypt.decrypt = crypt.encrypt
 
---[[local HashRes = env.request({ -- Old Hash
+local HashRes = env.request({
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/hash",
 	Method = "GET"
 })
@@ -1906,7 +1866,7 @@ if HashRes and HashRes.Body then
 	else
 		warn("HasbLib Failed To Load Error: " .. tostring(err))
 	end
-end]]
+end
 
 --[[local DrawingRes = env.request({
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/drawinglib",
@@ -1926,32 +1886,13 @@ if DrawingRes and DrawingRes.Body then
 	end
 end]]
 
-local function doHash(algo: table)
-	assert(type(algo) == "table", "crypt.hash expected table as argument #1")
-    
-    local success, res = pcall(function() 
-        return nukedata(code, "hash", {
-            al = algo
-        })
-    end)
-    
-	if not success then
-		env.warn(res)
-		return res
-	end
-
-    return (success and res) or ""
-end
-
-crypt.hash = doHash
-
---[[crypt.hash = function(txt, hashName)
+crypt.hash = function(txt, hashName)
 	for name, func in pairs(HashLib) do
 		if name == hashName or name:gsub("_", "-") == hashName then
 			return func(txt)
 		end
 	end
-end]]
+end
 
 env.crypt = crypt
 
@@ -2079,7 +2020,14 @@ local test = env.request({
 	Method = "GET"
 })
 
-if test and test.Body and test.Body == "test" then
+if test then
+    print("Status:", test.StatusCode)
+    print("Msg:", test.StatusMessage)
+    print("Body Length:", #tojumptostring(test.Body or ""))
+    print("Body Content:", test.Body)
+end
+
+if test and test.Body and test.Body:gsub("^%s*(.-)%s*$", "%1") == "test" then
 	doInfo("Testing Request: Success")
 else
 	doInfo("Testing Request: Failed")
