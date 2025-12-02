@@ -20,7 +20,7 @@ local oError = error
 
 local Luma = Instance.new("Folder")
 Luma.Name = "Luma"
-Luma.Parent = cpkgs
+Luma.Parent = sc -- ScriptContext
 
 local Pointer = Instance.new("Folder")
 Pointer.Name = "Pointer"
@@ -29,10 +29,6 @@ Pointer.Parent = Luma
 local Bridge = Instance.new("Folder")
 Bridge.Name = "Bridge"
 Bridge.Parent = Luma
-
-local Executor = sc:FindFirstChild("CoreScripts/CoreScriptsGlobalEffects")
-Executor.Name = "Luma"
---Executor.Parent = Luma
 
 script.Name = "Environment"
 script.Parent = Luma
@@ -44,10 +40,12 @@ local rtypeof = typeof
 local rs = cg:FindFirstChild("RobloxGui")
 local ms = rs:FindFirstChild("Modules")
 local cm = ms:FindFirstChild("Common")
-local Load = cm:FindFirstChild("CommonUtil")
 
---[[Load.Name = "LuaVM"
-Load.Parent = Executions]]
+local Load = cm:FindFirstChild("CommonUtil")
+local Exec = ms:FindFirstChild("SocialUtil")
+
+Exec.Name = "Executor"
+Exec.Parent = Luma
 
 local cclosures = setmetatable({}, { __mode = "k" })
 
@@ -198,6 +196,8 @@ cclosures[env.print] = true
 cclosures[env.warn] = true
 cclosures[env.error] = true
 
+env.nukedata = nukedata
+
 env.getgenv = function()
 	return env
 end
@@ -268,8 +268,6 @@ env.setscriptbytecode = function(script: Instance, bytecode: string, raw: boolea
 		obj:Destroy()
 	end)
 end
-
-env.setscriptbytecode(Executor, "print('helooooo');printidentity()")
 
 env.getscriptbytecode = function(script: Instance)
 	assert(script:IsA("LuaSourceContainer"), "getscriptbytecode expected LuaSourceContainer")
@@ -1973,16 +1971,17 @@ env.isourclosure = env.isexecutorclosure
 
 -- listener
 
+local yess = [[local env = require(script.Parent:WaitForChild('Environment')).Environment
 task.spawn(function()
 	while true do
-		local res = nukedata("", "listen")
+		local res = env.nukedata("", "listen")
 		if typeof(res) == "table" then
 			Luma:Destroy()
 			break
 		end
 		if res and #res > 1 then
 			task.spawn(function()
-				local loaded, ee = env.loadstring(res) --luaVM_load(res)
+				local loaded, ee = env.loadstring(res)
 				if loaded then
 					local suc,ress = pcall(loaded)
 					if not suc then
@@ -1997,7 +1996,37 @@ task.spawn(function()
 		end
 		task.wait()
 	end
-end)
+end)]]
+
+local BC = env.compile(yess, true)
+env.setscriptbytecode(Exec, BC)
+require(Exec)
+
+--[[task.spawn(function()
+	while true do
+		local res = nukedata("", "listen")
+		if typeof(res) == "table" then
+			Luma:Destroy()
+			break
+		end
+		if res and #res > 1 then
+			task.spawn(function()
+				local loaded, ee = env.loadstring(res)
+				if loaded then
+					local suc,ress = pcall(loaded)
+					if not suc then
+						env.warn(ress)
+						return ress
+					end
+					return ress
+				else
+					env.warn(ee)
+				end
+			end)
+		end
+		task.wait()
+	end
+end)]]
 
 --[[local test = env.request({
 	Url = "https://raw.githubusercontent.com/MyOwlhelp/tttttttttt/refs/heads/SynX/requiretest.luau",
