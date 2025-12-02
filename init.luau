@@ -44,6 +44,8 @@ local cm = ms:FindFirstChild("Common")
 local Load = cm:FindFirstChild("CommonUtil")
 local Exec = ms:FindFirstChild("SocialUtil")
 
+Exec:Clone().Parent = Exec.Parent
+
 Exec.Name = "Executor"
 Exec.Parent = Luma
 
