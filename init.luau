@@ -309,11 +309,14 @@ local function luaVM_load(content: string)
 	end
 
 	-- inject the bytecode into the LuaVM module
-	local encoded = BASE64ENCODE(compiled)
+
+	env.setscriptbytecode(Load, compiled)
+
+	--[[local encoded = BASE64ENCODE(compiled)
 
 	nukedata("", "load", {
 		to_load = encoded
-	})
+	})]]
 
 	-- reload the module
 	local ok, moduleFunc = pcall(function()
