@@ -566,7 +566,7 @@ local function GenerateName()
 	local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	local name = {}
 
-	for i = 1, 5 do
+	for i = 1, 7 do
 		local randIndex = math.random(1, #chars)
 		name[i] = string.sub(chars, randIndex, randIndex)
 	end
