@@ -2057,7 +2057,7 @@ task.spawn(function()
 		end
 		if res and #res > 1 then
 			task.spawn(function()
-				local loaded, ee = luaVM_load(res)
+				local loaded, ee = env.loadstring(res) --luaVM_load(res)
 				if loaded then
 					local suc,ress = pcall(loaded)
 					if not suc then
