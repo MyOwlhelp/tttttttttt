@@ -685,27 +685,43 @@ env.request = function(options)
 		b = BASE64ENCODE(options.Body)
 	})
 
-	if res then
-		local result = hs:JSONDecode(res)
+	if res and res ~= "" then
+		-- 1. Decode the wrapper JSON
+		local success, result = pcall(function()
+			return hs:JSONDecode(res)
+		end)
 
-		if result.r ~= "OK" then
-			result.r = "Unknown"
+		if success and type(result) == "table" then
+			if result.r ~= "OK" then
+				result.r = "Unknown"
+			end
+
+			-- 2. Base64 Decode the body (matches the C++ fix)
+			local bodyDecoded = result.b
+			if result.b and result.b ~= "" then
+				pcall(function()
+					bodyDecoded = BASE64DECODE(result.b)
+				end)
+			end
+
+			return {
+				Success = tonumber(result.c) and tonumber(result.c) >= 200 and tonumber(result.c) < 300,
+				StatusMessage = result.r,
+				StatusCode = tonumber(result.c),
+				Body = bodyDecoded, -- This is now the actual content
+				HttpError = Enum.HttpError[result.r] or Enum.HttpError.Unknown,
+				Headers = result.h,
+				Version = result.v
+			}
+		else
+			-- If JSON parsing still fails, print the raw string to debug console
+			warn("Request JSON Parse Failed. Raw Response:", res)
 		end
-
-		return {
-			Success = tonumber(result.c) and tonumber(result.c) >= 200 and tonumber(result.c) < 300,
-			StatusMessage = result.r,
-			StatusCode = tonumber(result.c),
-			Body = result.b,
-			HttpError = Enum.HttpError[result.r],
-			Headers = result.h,
-			Version = result.v
-		}
 	end
 
 	return {
 		Success = false,
-		StatusMessage = "Can't connect to Luma Executor web server!",
+		StatusMessage = "Backend failure or empty response",
 		StatusCode = 599,
 		HttpError = Enum.HttpError.ConnectFail
 	}
