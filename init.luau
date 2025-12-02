@@ -1816,7 +1816,7 @@ if HashRes and HashRes.Body then
 	end
 end]]
 
-local DrawingRes = env.request({
+--[[local DrawingRes = env.request({
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/drawinglib",
 	Method = "GET"
 })
@@ -1832,7 +1832,7 @@ if DrawingRes and DrawingRes.Body then
 	else
 		warn("DrawingLib Failed To Load Error: " .. tostring(err))
 	end
-end
+end]]
 
 local function doHash(algo: table)
 	assert(type(algo) == "table", "crypt.hash expected table as argument #1")
