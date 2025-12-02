@@ -1868,24 +1868,6 @@ if HashRes and HashRes.Body then
 	end
 end
 
---[[local DrawingRes = env.request({
-	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/drawinglib",
-	Method = "GET"
-})
-
-if DrawingRes and DrawingRes.Body then
-	local func, err = env.loadstring(DrawingRes.Body)
-	if func then
-		local drawing = func()
-		env.Drawing = drawing.Drawing
-		for i, v in drawing.functions do
-			env[i] = v
-		end
-	else
-		warn("DrawingLib Failed To Load Error: " .. tostring(err))
-	end
-end]]
-
 crypt.hash = function(txt, hashName)
 	for name, func in pairs(HashLib) do
 		if name == hashName or name:gsub("_", "-") == hashName then
@@ -2015,23 +1997,23 @@ task.spawn(function()
 	end
 end)
 
-local test = env.request({
+--[[local test = env.request({
 	Url = "https://raw.githubusercontent.com/MyOwlhelp/tttttttttt/refs/heads/SynX/requiretest.luau",
 	Method = "GET"
 })
 
---[[if test then
+if test then
     print("Status:", test.StatusCode)
     print("Msg:", test.StatusMessage)
     print("Body Length:", #tojumptostring(test.Body or ""))
     print("Body Content:", test.Body)
-end]]
+end
 
 if test and test.Body and test.Body:gsub("^%s*(.-)%s*$", "%1") == "test" then
 	doInfo("Testing Request: Success")
 else
 	doInfo("Testing Request: Failed")
-end
+end]]
 
 --[[local DecompileYe = env.request({
 	Url = "https://raw.githubusercontent.com/verysigmapro/UniversalSynSaveInstance-With-Save-Terrain/refs/heads/main/konstantdecompiler.lua",
@@ -2047,7 +2029,25 @@ if DecompileYe and DecompileYe.Body then
 	end
 end]]
 
---[[local Params = {
+local DrawingRes = env.request({
+	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/drawinglib",
+	Method = "GET"
+})
+
+if DrawingRes and DrawingRes.Body then
+	local func, err = env.loadstring(DrawingRes.Body)
+	if func then
+		local drawing = func()
+		env.Drawing = drawing.Drawing
+		for i, v in drawing.functions do
+			env[i] = v
+		end
+	else
+		warn("DrawingLib Failed To Load Error: " .. tostring(err))
+	end
+end
+
+local Params = {
 	RepoURL = "https://raw.githubusercontent.com/luau/SynSaveInstance/main/",
 	SSI = "saveinstance",
 }
@@ -2061,7 +2061,7 @@ local synsaveinstance = env.loadstring(rawSaveInstance)()
 
 env.saveinstance = function(options)
 	return synsaveinstance(options or {})
-end]]
+end
 
 doInfo("Luma Injected!")
 
