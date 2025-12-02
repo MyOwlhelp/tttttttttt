@@ -1801,25 +1801,6 @@ end
 
 crypt.decrypt = crypt.encrypt
 
-local function doHash(algo: table)
-	assert(type(algo) == "table", "crypt.hash expected table as argument #1")
-    
-    local success, res = pcall(function() 
-        return nukedata(code, "hash", {
-            al = algo
-        })
-    end)
-    
-	if not success then
-		env.warn(res)
-		return res
-	end
-
-    return (success and res) or ""
-end
-
-env.crypt.hash = doHash
-
 --[[local HashRes = env.request({ -- Old Hash
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/hash",
 	Method = "GET"
@@ -1853,13 +1834,32 @@ if DrawingRes and DrawingRes.Body then
 	end
 end
 
-crypt.hash = function(txt, hashName)
+local function doHash(algo: table)
+	assert(type(algo) == "table", "crypt.hash expected table as argument #1")
+    
+    local success, res = pcall(function() 
+        return nukedata(code, "hash", {
+            al = algo
+        })
+    end)
+    
+	if not success then
+		env.warn(res)
+		return res
+	end
+
+    return (success and res) or ""
+end
+
+crypt.hash = doHash
+
+--[[crypt.hash = function(txt, hashName)
 	for name, func in pairs(HashLib) do
 		if name == hashName or name:gsub("_", "-") == hashName then
 			return func(txt)
 		end
 	end
-end
+end]]
 
 env.crypt = crypt
 
