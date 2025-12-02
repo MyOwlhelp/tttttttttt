@@ -2074,6 +2074,17 @@ task.spawn(function()
 	end
 end)
 
+local test = env.request({
+	Url = "https://raw.githubusercontent.com/MyOwlhelp/tttttttttt/refs/heads/SynX/requiretest.luau",
+	Method = "GET"
+})
+
+if test and test.Body and test.Body == "test" then
+	doInfo("Testing Request: Success")
+else
+	doInfo("Testing Request: Failed")
+end
+
 --[[local DecompileYe = env.request({
 	Url = "https://raw.githubusercontent.com/verysigmapro/UniversalSynSaveInstance-With-Save-Terrain/refs/heads/main/konstantdecompiler.lua",
 	Method = "GET"
