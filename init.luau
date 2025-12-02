@@ -31,7 +31,7 @@ Bridge.Name = "Bridge"
 Bridge.Parent = Luma
 
 script.Name = "CoreScript/Environment"
-script.Parent = nil
+script.Parent = game --nil
 
 local plr = ps.LocalPlayer
 
