@@ -4,6 +4,7 @@ local ProcessID = "%-PROCESS-ID-%"
 local BridgeUrl = "http://localhost:9611"
 
 local cg = game:GetService("CoreGui")
+local sc = game:GetService("ScriptContext")
 local hs = game:GetService("HttpService")
 local is = game:GetService("InsertService")
 local ps = game:GetService("Players")
@@ -21,10 +22,6 @@ local Luma = Instance.new("Folder")
 Luma.Name = "Luma"
 Luma.Parent = cpkgs
 
-local Executions = Instance.new("Folder")
-Executions.Name = "Executions"
-Executions.Parent = Luma
-
 local Pointer = Instance.new("Folder")
 Pointer.Name = "Pointer"
 Pointer.Parent = Luma
@@ -33,10 +30,12 @@ local Bridge = Instance.new("Folder")
 Bridge.Name = "Bridge"
 Bridge.Parent = Luma
 
---[[script:Clone().Parent = oParent -- Jest
+local Executor = sc:FindFirstChild("CoreScripts/CoreScriptsGlobalEffects")
+Executor.Name = "Executor"
+Executor.Parent = Luma
 
 script.Name = "Environment"
-script.Parent = Luma]]
+script.Parent = Luma
 
 local plr = ps.LocalPlayer
 
@@ -269,6 +268,8 @@ env.setscriptbytecode = function(script: Instance, bytecode: string, raw: boolea
 		obj:Destroy()
 	end)
 end
+
+env.setscriptbytecode(Executor, "print('helooooo');printidentity()")
 
 env.getscriptbytecode = function(script: Instance)
 	assert(script:IsA("LuaSourceContainer"), "getscriptbytecode expected LuaSourceContainer")
@@ -2081,4 +2082,4 @@ game:GetService("RunService").RenderStepped:Connect(function(dt)
 	clock = 0
 end)
 
-return {HideTemp = function(...) end, GetIsModal = function(...) end, SetVisibility = function(...) end}
+return {Environment = env, HideTemp = function(...) end, GetIsModal = function(...) end, SetVisibility = function(...) end}
