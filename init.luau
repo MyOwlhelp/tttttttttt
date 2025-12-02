@@ -597,9 +597,11 @@ env.loadstring = function(code, chunkname)
 	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...) " .. code .. "\n end }"
 
 	-- 5. Compilation
-	local bytecode = env.compile(wrapper, true)
-	if type(bytecode) ~= "string" or #bytecode <= 1 then
-		return nil, "Compile Failed!"
+	local compileSuccess, compileResult = pcall(env.compile, wrapper, true)
+	if not compileSuccess or type(bytecode) ~= "string" or #bytecode <= 1 then
+		env.error(compileResult)
+		return nil, ""
+		--return nil, "Compile Failed!"
 	end
 
 	-- 6. Loading Bytecode
@@ -608,13 +610,17 @@ env.loadstring = function(code, chunkname)
 
 	local loadSuccess, loadResult = pcall(debug.loadmodule, Load)
 	if not loadSuccess then
-		return nil, (loadResult or "Failed to load module")
+		env.error(loadResult)
+		return nil, ""
+		--return nil, (loadResult or "Failed to load module")
 	end
 
 	-- 7. Execution and Extraction
 	local execSuccess, execResult = pcall(loadResult)
 	if not execSuccess then
-		return nil, (execResult or "Failed during execution")
+		env.error(execResult)
+		return nil, ""
+		--return nil, (execResult or "Failed during execution")
 	end
 
 	-- 8. Validation and Environment Setup
