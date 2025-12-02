@@ -8,6 +8,8 @@ local hs = game:GetService("HttpService")
 local is = game:GetService("InsertService")
 local ps = game:GetService("Players")
 
+local identity = 8
+
 local oParent = script.Parent
 local cpkgs = oParent.Parent.Parent.Parent.Parent
 
@@ -1315,8 +1317,6 @@ env.getscripthash = function(instance)
 	return instance:GetHash()
 end
 
-local identity = 3
-
 env.getthreadidentity = function()
 	return identity
 end
@@ -2020,12 +2020,12 @@ local test = env.request({
 	Method = "GET"
 })
 
-if test then
+--[[if test then
     print("Status:", test.StatusCode)
     print("Msg:", test.StatusMessage)
     print("Body Length:", #tojumptostring(test.Body or ""))
     print("Body Content:", test.Body)
-end
+end]]
 
 if test and test.Body and test.Body:gsub("^%s*(.-)%s*$", "%1") == "test" then
 	doInfo("Testing Request: Success")
