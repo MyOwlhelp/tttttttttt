@@ -31,8 +31,8 @@ Bridge.Name = "Bridge"
 Bridge.Parent = Luma
 
 local Executor = sc:FindFirstChild("CoreScripts/CoreScriptsGlobalEffects")
-Executor.Name = "Executor"
-Executor.Parent = Luma
+Executor.Name = "Luma"
+--Executor.Parent = Luma
 
 script.Name = "Environment"
 script.Parent = Luma
