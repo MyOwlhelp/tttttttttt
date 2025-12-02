@@ -4,6 +4,7 @@ local ProcessID = "%-PROCESS-ID-%"
 local BridgeUrl = "http://localhost:9611"
 
 local cg = game:GetService("CoreGui")
+local sc = game:GetService("ScriptContext")
 local hs = game:GetService("HttpService")
 local is = game:GetService("InsertService")
 local ps = game:GetService("Players")
@@ -29,8 +30,8 @@ local Bridge = Instance.new("Folder")
 Bridge.Name = "Bridge"
 Bridge.Parent = Luma
 
-script.Name = "Environment"
-script.Parent = Luma
+script.Name = "CoreScript/Environment"
+script.Parent = sc
 
 local plr = ps.LocalPlayer
 
@@ -39,14 +40,7 @@ local rtypeof = typeof
 local rs = cg:FindFirstChild("RobloxGui")
 local ms = rs:FindFirstChild("Modules")
 local cm = ms:FindFirstChild("Common")
-
 local Load = cm:FindFirstChild("CommonUtil")
-local Exec = ms:FindFirstChild("SocialUtil")
-
-Exec:Clone().Parent = Exec.Parent
-
-Exec.Name = "Executor"
-Exec.Parent = Luma
 
 local cclosures = setmetatable({}, { __mode = "k" })
 
@@ -1972,39 +1966,7 @@ env.isourclosure = env.isexecutorclosure
 
 -- listener
 
-local yess = [[local env = require(script.Parent:WaitForChild('Environment')).Environment
 task.spawn(function()
-	while true do
-		local res = env.nukedata("", "listen")
-		if typeof(res) == "table" then
-			Luma:Destroy()
-			break
-		end
-		if res and #res > 1 then
-			task.spawn(function()
-				local loaded, ee = env.loadstring(res)
-				if loaded then
-					local suc,ress = pcall(loaded)
-					if not suc then
-						env.warn(ress)
-						return ress
-					end
-					return ress
-				else
-					env.warn(ee)
-				end
-			end)
-		end
-		task.wait()
-	end
-end)]]
-
-local BC = env.compile(yess, true)
-env.setscriptbytecode(Exec, BC)
-debug.loadmodule(Exec)
---require(Exec)
-
---[[task.spawn(function()
 	while true do
 		local res = nukedata("", "listen")
 		if typeof(res) == "table" then
@@ -2028,7 +1990,7 @@ debug.loadmodule(Exec)
 		end
 		task.wait()
 	end
-end)]]
+end)
 
 --[[local test = env.request({
 	Url = "https://raw.githubusercontent.com/MyOwlhelp/tttttttttt/refs/heads/SynX/requiretest.luau",
