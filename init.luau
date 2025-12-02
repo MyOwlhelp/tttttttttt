@@ -519,43 +519,35 @@ local function GenerateName()
 end
 
 env.loadstring = function(code, chunkname)
-    -- Argument type checking
-    assert(type(code) == "string", "invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ") ", 2)
-    
-    chunkname = (type(chunkname) == "string" and chunkname) or "Luma"
+	assert(type(code) == "string", "invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ") ", 2)
+	chunkname = string.gsub(((type(chunkname) == "string" and chunkname) or "Luma"), "[^%a_]", "")
+	if (code == "" or code == " ") then
+		return nil, "Empty script source"
+	end
 
-    if (code == "" or code:match("^%s*$")) then
-        return nil, "Empty script source"
-    end
+	local bytecode = env.compile("return{[ [["..chunkname.."]] ]=function(...)local roe=function()return'\67\104\105\109\101\114\97\76\108\101'end;"..code.."\nend}", true)
+	if #bytecode <= 1 then
+		return nil, "Compile Failed!"
+	end
 
-    -- IMPROVED WRAPPER:
-    -- Instead of the detected table wrapper, we simply return the code wrapped in an anonymous function.
-    -- This mimics standard loadstring behavior where it returns a callable function.
-    local wrappedCode = "return function(...)\n" .. code .. "\nend"
+	env.setscriptbytecode(Load, bytecode)
 
-    local bytecode = env.compile(wrappedCode, true)
-    
-    -- Check for valid bytecode response
-    if type(bytecode) ~= "string" or #bytecode < 10 then
-        return nil, "Compile Failed: Invalid Bytecode returned"
-    end
+	local suc, res = pcall(function()
+		return debug.loadmodule(Load)
+	end)
 
-    -- 'Load' must be a pre-defined generic ModuleScript or Script instance in your environment
-    env.setscriptbytecode(Load, bytecode, false)
-
-    local suc, res = pcall(function()
-        -- debug.loadmodule executes the ModuleScript and returns what the ModuleScript returns
-        -- In our case, it returns the anonymous function we wrapped the code in.
-        return debug.loadmodule(Load)
-    end)
-
-    if suc and type(res) == "function" then
-        -- Set the environment of the returned function to the global env
-        setfenv(res, env)
-        return res
-    else
-        return nil, (res or "Failed To Load: Module did not return a function")
-    end
+	if suc then
+		local suc2, res2 = pcall(function()
+			return res()
+		end)
+		if suc2 and typeof(res2) == "table" and typeof(res2[chunkname]) == "function" then
+			return setfenv(res2[chunkname], env)
+		else
+			return nil, "Failed To Load!"
+		end
+	else
+		return nil, (res or "Failed To Load!")
+	end
 end
 
 local supportedMethods = {"GET", "POST", "PUT", "DELETE", "PATCH"}
@@ -1981,7 +1973,7 @@ task.spawn(function()
 	end
 end)
 
-local DecompileYe = env.request({
+--[[local DecompileYe = env.request({
 	Url = "https://raw.githubusercontent.com/verysigmapro/UniversalSynSaveInstance-With-Save-Terrain/refs/heads/main/konstantdecompiler.lua",
 	Method = "GET"
 })
@@ -1993,7 +1985,7 @@ if DecompileYe and DecompileYe.Body then
 	else
 		warn("Decompiler Failed To Load Error: " .. tostring(err))
 	end
-end
+end]]
 
 --[[local Params = {
 	RepoURL = "https://raw.githubusercontent.com/luau/SynSaveInstance/main/",
