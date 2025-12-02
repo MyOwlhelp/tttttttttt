@@ -1969,6 +1969,139 @@ env.isexecutorclosure = function(func)
 end
 env.isourclosure = env.isexecutorclosure
 
+-- 1. Signal Class (Standard Event Handling for OnMessage/OnClose)
+local Signal = {}
+Signal.__index = Signal
+
+function Signal.new()
+	return setmetatable({ _callbacks = {} }, Signal)
+end
+
+function Signal:Connect(func)
+	local connection = {
+		_func = func,
+		_signal = self,
+		Connected = true,
+		Disconnect = function(self)
+			self.Connected = false
+			for i, v in pairs(self._signal._callbacks) do
+				if v == self then table.remove(self._signal._callbacks, i) break end
+			end
+		end
+	}
+	table.insert(self._callbacks, connection)
+	return connection
+end
+
+function Signal:Fire(...)
+	for _, connection in ipairs(self._callbacks) do
+		if connection.Connected then
+			task.spawn(connection._func, ...)
+		end
+	end
+end
+
+function Signal:Wait()
+    local waiting = true
+    local res
+    local c
+    c = self:Connect(function(...)
+        res = {...}
+        waiting = false
+        c:Disconnect()
+    end)
+    repeat task.wait() until not waiting
+    return unpack(res)
+end
+
+-- 2. WebSocket Library Implementation
+env.WebSocket = {}
+env.WebSocket.connect = function(url)
+    -- Input Validation
+    if type(url) ~= "string" then 
+        return error("WebSocket.connect: URL must be a string") 
+    end
+
+    -- A. CONNECT: Send request to C++ to start the socket
+    -- We use crypt.base64 to ensure the URL passes safely through JSON
+    local sid = nukedata("", "websocket.connect", {
+        url = BASE64ENCODE(url)
+    })
+
+    -- Check if C++ returned a valid Session ID
+    if not sid or sid == "" or sid:find("error") then
+        return error("WebSocket Connection Failed: " .. tostring(sid))
+    end
+
+    -- Create the Object
+    local ws = {}
+    ws.OnMessage = Signal.new()
+    ws.OnClose = Signal.new()
+    local isOpen = true
+
+    -- B. SEND: Sends message to C++ -> WebSocket
+    function ws:Send(msg)
+        if not isOpen then return error("WebSocket is closed") end
+        
+        -- We encode the message to Base64 so C++ can decode it safely
+        -- This supports binary data and prevents JSON syntax errors
+        nukedata("", "websocket.send", {
+            sid = sid,
+            msg = BASE64ENCODE(tostring(msg))
+        })
+    end
+
+    -- C. CLOSE: Tells C++ to stop the thread
+    function ws:Close()
+        if not isOpen then return end
+        isOpen = false
+        
+        nukedata("", "websocket.close", {
+            sid = sid
+        })
+        
+        ws.OnClose:Fire()
+    end
+
+    -- D. POLLING LOOP: The "Heart" of the bridge
+    -- Since HTTP is request-response, we must keep asking C++ "Any new messages?"
+    task.spawn(function()
+        while isOpen do
+            local success, response = pcall(function() 
+                return nukedata("", "websocket.poll", { sid = sid }) 
+            end)
+
+            if success and response and response ~= "" and response ~= "[]" then
+                -- Decode the JSON array returned by C++
+                local jsonSuccess, messages = pcall(hs.JSONDecode, hs, response)
+                
+                if jsonSuccess and messages then
+                    for _, msg in ipairs(messages) do
+                        if msg == "##CLOSED##" then
+                            -- Special flag from C++ indicating socket died/closed
+                            if isOpen then
+                                isOpen = false
+                                ws.OnClose:Fire()
+                            end
+                            return -- Stop the loop
+                        else
+                            -- Normal message
+                            ws.OnMessage:Fire(msg)
+                        end
+                    end
+                end
+            end
+            
+            -- Wait 50ms to prevent freezing the game (20 checks per second)
+            task.wait(0.05) 
+        end
+    end)
+
+    return ws
+end
+
+setreadonly(env.WebSocket, true)
+
 -- listener
 
 task.spawn(function()
