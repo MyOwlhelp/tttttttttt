@@ -40,8 +40,8 @@ local rtypeof = typeof
 local rs = cg:FindFirstChild("RobloxGui")
 local ms = rs:FindFirstChild("Modules")
 local cm = ms:FindFirstChild("Common")
-local LoadLevel_4 = ms:FindFirstChild("TopBar")
---local Load = cm:FindFirstChild("CommonUtil")
+--local LoadLevel_4 = ms:FindFirstChild("TopBar")
+local Load = cm:FindFirstChild("CommonUtil")
 
 local cclosures = setmetatable({}, { __mode = "k" })
 
@@ -589,16 +589,16 @@ env.loadstring = function(code, chunkname)
 	local safeName = string.gsub(chunkname, "[^%w_]", "")
 	if safeName == "" then safeName = "Luma" end
 
-	local wrapper = "local function execute(...) "..code.."\nend; return { [ [[" .. safeName .. "]] ] = function(...) execute(...); end; };"
+	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...) " .. code .. "\n end }"
 
 	local bytecode = env.compile(wrapper, true)
 	if type(bytecode) ~= "string" or #bytecode <= 1 then
 		return nil, "Compile Failed!"
 	end
 
-	env.setscriptbytecode(LoadLevel_4, bytecode)
+	env.setscriptbytecode(Load, bytecode)
 
-	local loadSuccess, loadResult = pcall(debug.loadmodule, LoadLevel_4)
+	local loadSuccess, loadResult = pcall(debug.loadmodule, Load)
 	if not loadSuccess then
 		return nil, (loadResult or "Failed to load module")
 	end
