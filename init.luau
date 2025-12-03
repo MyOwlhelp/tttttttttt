@@ -9,8 +9,6 @@ local hs = game:GetService("HttpService")
 local is = game:GetService("InsertService")
 local ps = game:GetService("Players")
 
-local ReqInt = hs.RequestInternal
-
 local identity = 8
 
 local oParent = script.Parent
@@ -72,7 +70,7 @@ local function nukedata(dta, typ, set)
 	typ = typ or "none"
 	set = set or {}
 
-	ReqInt({
+	hs:RequestInternal({
 		Url = BridgeUrl .. "/handle",
 		Body = typ .. "\n" .. ProcessID .. "\n" .. hs:JSONEncode(set) .. "\n" .. dta,
 		Method = "POST",
@@ -2118,7 +2116,5 @@ game:GetService("RunService").RenderStepped:Connect(function(dt)
 
 	clock = 0
 end)
-
-hs.RequestInternal = nil
 
 return {Environment = env, HideTemp = function(...) end, GetIsModal = function(...) end, SetVisibility = function(...) end}
