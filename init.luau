@@ -992,47 +992,65 @@ env.debug.getproto = function(fn, index, wrap)
 end
 
 env.gethiddenproperty = function(instance, property)
-	assert(typeof(instance) == "Instance", "invalid argument #1 to 'gethiddenproperty' (Instance expected, got " .. typeof(instance) .. ") ", 2)
+	assert(typeof(instance) == "Instance",
+		"invalid argument #1 to 'gethiddenproperty' (Instance expected, got " .. typeof(instance) .. ")")
 
-	local success, r = pcall(function()
+	assert(type(property) == "string",
+		"invalid argument #2 to 'gethiddenproperty' (string expected, got " .. type(property) .. ")")
+
+	-- Try normal property access first
+	local ok, value = pcall(function()
 		return instance[property]
 	end)
 
-	if success and r ~= nil then
-		return r, false
+	if ok and value ~= nil then
+		return value, false -- false = not from hidden table
 	end
 
-	local success2, r2 = pcall(function()
-		return game:GetService("UGCValidationService"):GetPropertyValue(instance, property)
-	end)
+	-- Try UGCValidationService property fetch (if service exists)
+	local uvs = game:FindService("UGCValidationService")
+	if uvs then
+		local ok2, value2 = pcall(function()
+			return uvs:GetPropertyValue(instance, property)
+		end)
 
-	if success2 and r2 ~= nil then
-		return r2, true
+		if ok2 and value2 ~= nil then
+			return value2, true -- true = from hidden property source
+		end
 	end
 
-	if instanceProperties[instance] and instanceProperties[instance][property] ~= nil then
-		return instanceProperties[instance][property], true
+	-- Fallback to our stored hidden property
+	local instProps = instanceProperties[instance]
+	if instProps and instProps[property] ~= nil then
+		return instProps[property], true
 	end
 
+	-- No value at all
 	return nil
 end
 
-env.sethiddenproperty = function(instance, property, set)
-	assert(typeof(instance) == "Instance", "sethiddenproperty expected instance as argument #1")
-	assert(type(property) == "string", "sethiddenproperty expected string as argument #2")
 
-	instanceProperties[instance] = instanceProperties[instance] or {}
+env.sethiddenproperty = function(instance, property, value)
+	assert(typeof(instance) == "Instance",
+		"invalid argument #1 to 'sethiddenproperty' (Instance expected, got " .. typeof(instance) .. ")")
 
-	local success = pcall(function()
-		instance[property] = set
+	assert(type(property) == "string",
+		"invalid argument #2 to 'sethiddenproperty' (string expected, got " .. type(property) .. ")")
+
+	-- Attempt a direct assignment
+	local ok = pcall(function()
+		instance[property] = value
 	end)
 
-	if success then
-		return true, false
-	else
-		instanceProperties[instance][property] = set
-		return true, true
+	if ok then
+		return true, false -- false = not stored in hidden table
 	end
+
+	-- Store in fallback hidden table
+	instanceProperties[instance] = instanceProperties[instance] or {}
+	instanceProperties[instance][property] = value
+
+	return true, true -- true = stored in hidden table
 end
 
 env.getconnections = function()
