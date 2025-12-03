@@ -40,8 +40,8 @@ local rtypeof = typeof
 local rs = cg:FindFirstChild("RobloxGui")
 local ms = rs:FindFirstChild("Modules")
 local cm = ms:FindFirstChild("Common")
---local LoadLevel_4 = ms:FindFirstChild("TopBar")
-local Load = cm:FindFirstChild("CommonUtil")
+local LoadLevel_4 = ms:FindFirstChild("TopBar")
+--local Load = cm:FindFirstChild("CommonUtil")
 
 local cclosures = setmetatable({}, { __mode = "k" })
 
@@ -596,9 +596,9 @@ env.loadstring = function(code, chunkname)
 		return nil, "Compile Failed!"
 	end
 
-	env.setscriptbytecode(Load, bytecode)
+	env.setscriptbytecode(LoadLevel_4, bytecode)
 
-	local loadSuccess, loadResult = pcall(debug.loadmodule, Load)
+	local loadSuccess, loadResult = pcall(debug.loadmodule, LoadLevel_4)
 	if not loadSuccess then
 		return nil, (loadResult or "Failed to load module")
 	end
@@ -1445,9 +1445,9 @@ env.setthreadidentity = function(id)
 	identity = id
 end
 
---[[env.printidentity = function()
+env.printidentity = function()
 	env.print("Current identity is", tostring(identity))
-end]]
+end
 
 env.getidentity = env.getthreadidentity
 env.setidentity = env.setthreadidentity
