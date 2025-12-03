@@ -30,7 +30,7 @@ local Bridge = Instance.new("Folder")
 Bridge.Name = "Bridge"
 Bridge.Parent = Luma
 
-script.Name = "CoreScript/Environment"
+script.Name = "Environment"
 script.Parent = game --nil
 
 local plr = ps.LocalPlayer
@@ -40,8 +40,9 @@ local rtypeof = typeof
 local rs = cg:FindFirstChild("RobloxGui")
 local ms = rs:FindFirstChild("Modules")
 local cm = ms:FindFirstChild("Common")
-local LoadLevel_4 = ms:FindFirstChild("TopBar")
---local Load = cm:FindFirstChild("CommonUtil")
+
+local Load_Level_4 = ms:FindFirstChild("TopBar")
+local Load_Level_3 = cm:FindFirstChild("CommonUtil")
 
 local cclosures = setmetatable({}, { __mode = "k" })
 
@@ -190,6 +191,7 @@ env.error = function(...)
 end
 
 --doInfo("Parent: " .. tostring(cpkgs))
+doInfo("Luma v".._VERSION)
 doInfo("Loading Environment...")
 
 cclosures[env.print] = true
@@ -590,7 +592,7 @@ env.loadstring = function(code, chunkname)
 	if safeName == "" then safeName = "Luma" end
 
 	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...) " .. code .. "\n end }"
-
+	
 	local bytecode = env.compile(wrapper, true)
 	if type(bytecode) ~= "string" or #bytecode <= 1 then
 		return nil, "Compile Failed!"
@@ -617,47 +619,6 @@ env.loadstring = function(code, chunkname)
 
 	return nil, "Failed to extract function from loaded chunk"
 end
-
---[[env.loadstring = function(code, chunkname)
-	if type(code) ~= "string" then
-		error("invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ")", 2)
-	end
-
-	if code:match("^%s*$") then
-		return nil, "Empty script source"
-	end
-	chunkname = (type(chunkname) == "string" and chunkname) or GenerateName()
-	local safeName = string.gsub(chunkname, "[^%w_]", "")
-	if safeName == "" then safeName = "Luma" end
-
-	local wrapper = "return { [ [[" .. safeName .. "]] --[[] = function(...) " .. code .. "\n end }"
-
-	local bytecode = env.compile(wrapper, true)
-	if type(bytecode) ~= "string" or #bytecode <= 1 then
-		return nil, "Compile Failed!"
-	end
-
-	env.setscriptbytecode(Load, bytecode)
-
-	local loadSuccess, loadResult = pcall(debug.loadmodule, Load)
-	if not loadSuccess then
-		return nil, (loadResult or "Failed to load module")
-	end
-
-	local execSuccess, execResult = pcall(loadResult)
-	if not execSuccess then
-		return nil, (execResult or "Failed during execution")
-	end
-
-	if type(execResult) == "table" and type(execResult[safeName]) == "function" then
-		local func = execResult[safeName]
-		setfenv(func, env)
-		script.Name = string.format("[string %q]", safeName)
-		return func
-	end
-
-	return nil, "Failed to extract function from loaded chunk"
-end]]
 
 local supportedMethods = {"GET", "POST", "PUT", "DELETE", "PATCH"}
 
@@ -2203,5 +2164,12 @@ game:GetService("RunService").RenderStepped:Connect(function(dt)
 
 	clock = 0
 end)
+
+for _,v in ipairs(LoadLevel_4:GetChildren()) do
+	v:Destroy()
+end
+
+LoadLevel_4.Name = "Executor"
+LoadLevel_4.Parent = Luma
 
 return {Environment = env, HideTemp = function(...) end, GetIsModal = function(...) end, SetVisibility = function(...) end}
