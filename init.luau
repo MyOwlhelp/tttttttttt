@@ -44,6 +44,8 @@ local cm = ms:FindFirstChild("Common")
 local Load_Level_4 = ms:FindFirstChild("TopBar")
 local Load_Level_3 = cm:FindFirstChild("CommonUtil")
 
+local _eventConnections = setmetatable({}, { __mode = "k" })
+
 local cclosures = setmetatable({}, { __mode = "k" })
 
 local readonlyMap = setmetatable({}, { __mode = "k" })
@@ -1059,19 +1061,20 @@ env.sethiddenproperty = function(instance, property, value)
 	return true, true -- true = stored in hidden table
 end
 
-env.getconnections = function()
-	return {{
-		Enabled = true, 
-		ForeignState = false, 
-		LuaConnection = true, 
-		Function = function() end,
-		Thread = task.spawn(function() end),
-		Fire = function() end, 
-		Defer = function() end, 
-		Disconnect = function() end,
-		Disable = function() end, 
-		Enable = function() end,
-	}}
+env.getconnections = function(signal)
+    return {{
+        Enabled = true, 
+        ForeignState = false, 
+        LuaConnection = true, 
+        Function = signal._lastConnectedFunction,
+        Thread = task.spawn(signal._lastConnectedFunction),
+        
+        Fire = function() end, 
+        Defer = function() end, 
+        Disconnect = function() end,
+        Disable = function() end, 
+        Enable = function() end,
+    }}
 end
 
 env.base64encode = function(input)
@@ -1758,6 +1761,24 @@ game.DescendantAdded:Connect(proxyobject)
 local rInstance = Instance
 local fInstance = {}
 
+local function wrapBindableEvent(eventObj)
+    local realConnect = eventObj.Connect
+
+    eventObj.Connect = function(self, fn)
+        -- run real connect
+        local connection = realConnect(self, fn)
+
+        -- store real function pointer (IMPORTANT)
+        _eventConnections[self] = _eventConnections[self] or {}
+        table.insert(_eventConnections[self], {
+            Function = fn,
+            Connection = connection,
+        })
+
+        return connection
+    end
+end
+
 fInstance.new = function(name, par)
 	return proxyobject(rInstance.new(name, ToObject(par)))
 end
@@ -1768,12 +1789,27 @@ end
 
 local oldNew = fInstance.new
 fInstance.new = function(newType, parent)
-	assert(type(newType) == "string", "invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")", 2)
+	assert(type(newType) == "string",
+		"invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")",
+		2
+	)
 
+	-- create instance normally (proxied)
 	local newInstance = oldNew(newType, parent)
 
+	-- track BindableFunction for OnInvoke (your old behavior)
 	if newType == "BindableFunction" then
 		callbackStore[newInstance] = {}
+	end
+
+	-- ⭐ PATCH: track BindableEvent event connections
+	if newType == "BindableEvent" then
+		-- prepare storage for event connections
+		_eventConnections[newInstance.Event] = {}
+
+		-- wrap .Event:Connect() on the **real object**
+		local real = ToObject(newInstance)
+		wrapBindableEvent(real.Event)
 	end
 
 	return newInstance
