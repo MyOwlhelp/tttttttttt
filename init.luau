@@ -1346,7 +1346,7 @@ env.setthreadidentity = function(id)
 end
 
 env.printidentity = function()
-	print("Current identity is", identity)
+	envn.print("Current identity is", tostring(identity))
 end
 
 env.getidentity = env.getthreadidentity
