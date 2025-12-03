@@ -589,7 +589,32 @@ env.loadstring = function(code, chunkname)
 	local safeName = string.gsub(chunkname, "[^%w_]", "")
 	if safeName == "" then safeName = "Luma" end
 
-	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...) " .. code .. "\n end }"
+	--local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...) " .. code .. "\n end }"
+
+	-- new wrapper (execute it from level 4 script)
+	local wrapper = [[
+local executed = false
+local args
+
+local function lol(...)
+    ]] .. code .. [[
+end
+
+task.spawn(function()
+    while not executed do
+        task.wait()
+    end
+    task.spawn(function()
+        lol(table.unpack(args))
+    end)
+end)
+
+return {
+    [ [=[ ]] .. safeName .. [[ ]=] ] = function(...)
+        args = { ... }
+        executed = true
+    end
+}]]
 
 	local bytecode = env.compile(wrapper, true)
 	if type(bytecode) ~= "string" or #bytecode <= 1 then
@@ -617,6 +642,47 @@ env.loadstring = function(code, chunkname)
 
 	return nil, "Failed to extract function from loaded chunk"
 end
+
+--[[env.loadstring = function(code, chunkname)
+	if type(code) ~= "string" then
+		error("invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ")", 2)
+	end
+
+	if code:match("^%s*$") then
+		return nil, "Empty script source"
+	end
+	chunkname = (type(chunkname) == "string" and chunkname) or GenerateName()
+	local safeName = string.gsub(chunkname, "[^%w_]", "")
+	if safeName == "" then safeName = "Luma" end
+
+	local wrapper = "return { [ [[" .. safeName .. "]] --[[] = function(...) " .. code .. "\n end }"
+
+	local bytecode = env.compile(wrapper, true)
+	if type(bytecode) ~= "string" or #bytecode <= 1 then
+		return nil, "Compile Failed!"
+	end
+
+	env.setscriptbytecode(Load, bytecode)
+
+	local loadSuccess, loadResult = pcall(debug.loadmodule, Load)
+	if not loadSuccess then
+		return nil, (loadResult or "Failed to load module")
+	end
+
+	local execSuccess, execResult = pcall(loadResult)
+	if not execSuccess then
+		return nil, (execResult or "Failed during execution")
+	end
+
+	if type(execResult) == "table" and type(execResult[safeName]) == "function" then
+		local func = execResult[safeName]
+		setfenv(func, env)
+		script.Name = string.format("[string %q]", safeName)
+		return func
+	end
+
+	return nil, "Failed to extract function from loaded chunk"
+end]]
 
 local supportedMethods = {"GET", "POST", "PUT", "DELETE", "PATCH"}
 
@@ -1404,9 +1470,9 @@ env.setthreadidentity = function(id)
 	identity = id
 end
 
---[[env.printidentity = function()
+env.printidentity = function()
 	env.print("Current identity is", tostring(identity))
-end]]
+end
 
 env.getidentity = env.getthreadidentity
 env.setidentity = env.setthreadidentity
