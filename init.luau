@@ -1062,19 +1062,29 @@ env.sethiddenproperty = function(instance, property, value)
 end
 
 env.getconnections = function(signal)
-    return {{
-        Enabled = true, 
-        ForeignState = false, 
-        LuaConnection = true, 
-        Function = signal._lastConnectedFunction,
-        Thread = task.spawn(signal._lastConnectedFunction),
-        
-        Fire = function() end, 
-        Defer = function() end, 
-        Disconnect = function() end,
-        Disable = function() end, 
-        Enable = function() end,
-    }}
+    local list = _eventConnections[signal]
+    if not list then
+        return {}
+    end
+
+    local results = {}
+
+    for _, item in ipairs(list) do
+        table.insert(results, {
+            Enabled = true,
+            ForeignState = false,
+            LuaConnection = true,
+            Function = item.Function, -- EXACT REAL CALLBACK
+            Thread = nil,
+            Fire = function() end,
+            Defer = function() end,
+            Disconnect = function() item.Connection:Disconnect() end,
+            Disable = function() end,
+            Enable = function() end,
+        })
+    end
+
+    return results
 end
 
 env.base64encode = function(input)
