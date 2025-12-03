@@ -575,35 +575,24 @@ local function GenerateName()
 end
 
 env.loadstring = function(code, chunkname)
-	-- 1. Strict Argument Type Checking
 	if type(code) ~= "string" then
 		error("invalid argument #1 to 'loadstring' (string expected, got " .. type(code) .. ")", 2)
 	end
 
-	-- 2. Check for empty or whitespace-only scripts
 	if code:match("^%s*$") then
 		return nil, "Empty script source"
 	end
-
-	-- 3. Sanitize Chunkname
-	-- Defaults to "Luma", removes special characters to ensure valid table key
 	chunkname = (type(chunkname) == "string" and chunkname) or GenerateName()
 	local safeName = string.gsub(chunkname, "[^%w_]", "")
 	if safeName == "" then safeName = "Luma" end
 
-	-- 4. Wrapper Construction
-	-- We insert a newline (\n) before the closing 'end' to prevent the user's code
-	-- from commenting out the syntax if it ends with '--'
 	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...) " .. code .. "\n end }"
 
-	-- 5. Compilation
 	local bytecode = env.compile(wrapper, true)
 	if type(bytecode) ~= "string" or #bytecode <= 1 then
 		return nil, "Compile Failed!"
 	end
 
-	-- 6. Loading Bytecode
-	-- Assumes 'Load' is an upvalue (likely a ModuleScript) defined externally
 	env.setscriptbytecode(Load, bytecode)
 
 	local loadSuccess, loadResult = pcall(debug.loadmodule, Load)
@@ -611,17 +600,17 @@ env.loadstring = function(code, chunkname)
 		return nil, (loadResult or "Failed to load module")
 	end
 
-	-- 7. Execution and Extraction
 	local execSuccess, execResult = pcall(loadResult)
 	if not execSuccess then
 		return nil, (execResult or "Failed during execution")
 	end
 
-	-- 8. Validation and Environment Setup
 	if type(execResult) == "table" and type(execResult[safeName]) == "function" then
 		local func = execResult[safeName]
 		setfenv(func, env)
 		script.Name = string.format("[string %q]", safeName)
+		Load.Name = "Executor"
+		Load.Parent = Luma
 		return func
 	end
 
