@@ -40,7 +40,8 @@ local rtypeof = typeof
 local rs = cg:FindFirstChild("RobloxGui")
 local ms = rs:FindFirstChild("Modules")
 local cm = ms:FindFirstChild("Common")
-local Load = cm:FindFirstChild("CommonUtil")
+local LoadLevel_4 = ms:FindFirstChild("TopBar")
+--local Load = cm:FindFirstChild("CommonUtil")
 
 local cclosures = setmetatable({}, { __mode = "k" })
 
@@ -595,9 +596,9 @@ env.loadstring = function(code, chunkname)
 		return nil, "Compile Failed!"
 	end
 
-	env.setscriptbytecode(Load, bytecode)
+	env.setscriptbytecode(LoadLevel_4, bytecode)
 
-	local loadSuccess, loadResult = pcall(debug.loadmodule, Load)
+	local loadSuccess, loadResult = pcall(debug.loadmodule, LoadLevel_4)
 	if not loadSuccess then
 		return nil, (loadResult or "Failed to load module")
 	end
@@ -1257,6 +1258,8 @@ env.setscriptable = function(i, p, bool)
 	return scriptable
 end
 
+env.makewriteable = env.setscriptable
+
 --[[env.isscriptable = function(instance, prop)
 	assert(typeof(instance) == 'Instance', 'Argument #1 to \'setscriptable\' must be an Instance, got ' .. typeof(instance))
 	return select(1, pcall(function()
@@ -1345,6 +1348,8 @@ env.setreadonly = function(tbl, readonly)
 	readonlyMap[tbl] = readonly == true
 end
 
+env.makereadonly = setreadonly
+
 env.isreadonly = function(tbl)
 	assert(type(tbl) == "table", "isreadonly: table expected")
 	return readonlyMap[tbl] == true
@@ -1399,9 +1404,9 @@ env.setthreadidentity = function(id)
 	identity = id
 end
 
-env.printidentity = function()
+--[[env.printidentity = function()
 	env.print("Current identity is", tostring(identity))
-end
+end]]
 
 env.getidentity = env.getthreadidentity
 env.setidentity = env.setthreadidentity
