@@ -166,13 +166,7 @@ local function doOutput(t, ...)
 	for i = 1, #args do
 		args[i] = tostring(args[i])
 	end
-	local typeMap = {
-		info = "[Info] ",
-		print = "[Print] ",
-		warn = "[Warn] ",
-		error = "[Error] "
-	}
-	nukedata("", "output", {msg = BASE64ENCODE(typeMap[t]..table.concat(args, "\t")), type = t})
+	nukedata("", "output", {msg = BASE64ENCODE(table.concat(args, "\t")), type = t})
 end
 
 local function doInfo(...)
@@ -2170,12 +2164,5 @@ game:GetService("RunService").RenderStepped:Connect(function(dt)
 
 	clock = 0
 end)
-
-for _,v in ipairs(LoadLevel_4:GetChildren()) do
-	v:Destroy()
-end
-
-LoadLevel_4.Name = "Executor"
-LoadLevel_4.Parent = Luma
 
 return {Environment = env, HideTemp = function(...) end, GetIsModal = function(...) end, SetVisibility = function(...) end}
