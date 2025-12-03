@@ -1055,6 +1055,29 @@ env.sethiddenproperty = function(instance, property, value)
 	return true, true -- true = stored in hidden table
 end
 
+env.decompile = function(S)
+	local success, result = pcall(env.request, {
+		Url = "http://127.0.0.1:23867/decompile",
+		Body = type(S) == "string" and S or env.getscriptbytecode(S),
+		Method = "POST",
+		Headers = {
+			["Content-Type"] = "text/plain"
+		}
+	})
+
+	if not success then
+		warn("Found an error while decompiling: " .. tostring(result))
+		return nil
+	end
+
+	if type(result) ~= "table" or not result.Body then
+		warn("Decompiler returned invalid response")
+		return nil
+	end
+
+	return "-- Decompiled with Luma\n\n" .. result.Body
+end
+
 env.getconnections = function()
 	return {{
 		Enabled = true, 
