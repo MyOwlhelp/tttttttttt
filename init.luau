@@ -598,9 +598,9 @@ env.loadstring = function(code, chunkname)
 		return nil, "Compile Failed!"
 	end
 
-	env.setscriptbytecode(LoadLevel_4, bytecode)
+	env.setscriptbytecode(Load_Level_4, bytecode)
 
-	local loadSuccess, loadResult = pcall(debug.loadmodule, LoadLevel_4)
+	local loadSuccess, loadResult = pcall(debug.loadmodule, Load_Level_4)
 	if not loadSuccess then
 		return nil, (loadResult or "Failed to load module")
 	end
