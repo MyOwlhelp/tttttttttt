@@ -609,8 +609,6 @@ env.loadstring = function(code, chunkname)
 		local func = execResult[safeName]
 		setfenv(func, env)
 		script.Name = string.format("[string %q]", safeName)
-		Load.Name = "Executor"
-		Load.Parent = Luma
 		return func
 	end
 
