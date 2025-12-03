@@ -166,7 +166,13 @@ local function doOutput(t, ...)
 	for i = 1, #args do
 		args[i] = tostring(args[i])
 	end
-	nukedata("", "output", {msg = BASE64ENCODE(table.concat(args, "\t")), type = t})
+	local typeMap = {
+		info = "[Info] ",
+		print = "[Print] ",
+		warn = "[Warn] ",
+		error = "[Error] "
+	}
+	nukedata("", "output", {msg = BASE64ENCODE(typeMap[t]..table.concat(args, "\t")), type = t})
 end
 
 local function doInfo(...)
