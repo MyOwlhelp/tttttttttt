@@ -496,9 +496,7 @@ end
 env.loadfile = function(path)
 	assert(type(path) == "string", "loadfile expected string path")
 
-	local source = nukedata("", "readfile", {
-		p = path
-	})
+	local source = env.readfile(path)
 
 	if not source or source == "" then
 		error("loadfile: file not found or empty: " .. path)
