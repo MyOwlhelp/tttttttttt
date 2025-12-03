@@ -48,8 +48,6 @@ local readonlyMap = setmetatable({}, { __mode = "k" })
 local scriptableTable = setmetatable({}, { __mode = "k" })
 local cachedInstances = setmetatable({}, { __mode = "k" })
 local callbackStore = setmetatable({}, { __mode = "k" })
-local connectionStore = setmetatable({}, { __mode = "k" })
-local funcToInfo = setmetatable({}, { __mode = "k" })
 local raw_metas = setmetatable({}, { __mode = "k" })
 local instanceProperties = setmetatable({}, { __mode = "k" })
 local fakeUpvalueCache = setmetatable({}, { __mode = "k" })
@@ -1558,271 +1556,130 @@ local proxyobject
 local proxied = {}
 local objects = {}
 
--- Helper: safe rtypeof wrapper (use theirs if available)
-local rtypeof = rtypeof or typeof -- fallback if rtypeof not present
-
--- ToProxy: converts Instances in arguments to proxy objects
 function ToProxy(...)
-    local packed = table.pack(...)
-    local function LookTable(t)
-        for i, obj in ipairs(t) do
-            if rtypeof(obj) == "Instance" then
-                if objects[obj] then
-                    t[i] = objects[obj].proxy
-                else
-                    t[i] = proxyobject(obj)
-                end
-            elseif type(obj) == "table" then
-                LookTable(obj)
-            else
-                t[i] = obj
-            end
-        end
-    end
-    LookTable(packed)
-    return table.unpack(packed, 1, packed.n)
+	local packed = table.pack(...)
+	local function LookTable(t)
+		for i, obj in ipairs(t) do
+			if rtypeof(obj) == "Instance" then
+				if objects[obj] then
+					t[i] = objects[obj].proxy
+				else
+					t[i] = proxyobject(obj)
+				end
+			elseif typeof(obj) == "table" then
+				LookTable(obj)
+			else
+				t[i] = obj
+			end
+		end
+	end
+	LookTable(packed)
+	return table.unpack(packed, 1, packed.n)
 end
 
--- ToObject: converts proxies back to real Instances for calls into Roblox
 function ToObject(...)
-    local packed = table.pack(...)
-    local function LookTable(t)
-        for i, obj in ipairs(t) do
-            if type(obj) == "table" and proxied[obj] then
-                t[i] = proxied[obj].object
-            elseif type(obj) == "table" then
-                LookTable(obj)
-            else
-                t[i] = obj
-            end
-        end
-    end
-    LookTable(packed)
-    return table.unpack(packed, 1, packed.n)
+	local packed = table.pack(...)
+	local function LookTable(t)
+		for i, obj in ipairs(t) do
+			if rtypeof(obj) == "userdata" then
+				if proxied[obj] then
+					t[i] = proxied[obj].object
+				else
+					t[i] = obj
+				end
+			elseif typeof(obj) == "table" then
+				LookTable(obj)
+			else
+				t[i] = obj
+			end
+		end
+	end
+	LookTable(packed)
+	return table.unpack(packed, 1, packed.n)
 end
 
--- Ensure callback table for a real object
-local function ensureStore(real)
-    if not callbackStore[real] then
-        callbackStore[real] = {}
-    end
-    return callbackStore[real]
-end
-
--- Create a wrapped function that calls original and preserves returns.
--- Also records mapping so we can return original later from getcallbackvalue.
-local function makeWrapperFor(real, key, originalFn)
-    local info = funcToInfo[originalFn]
-    if info and info.real == real and info.key == key then
-        return info.wrapped
-    end
-
-    local wrapped = function(...)
-        -- pcall so token errors don't break engine calls unexpectedly
-        local ok, a, b, c, d, e, f = pcall(originalFn, ...)
-        if not ok then
-            -- rethrow so calling code gets error (matches typical behavior)
-            error(a)
-        end
-        return a, b, c, d, e, f
-    end
-
-    funcToInfo[originalFn] = { real = real, key = key, original = originalFn, wrapped = wrapped }
-    return wrapped
-end
-
--- Connection proxy constructor
-local function makeConnectionProxy(real, realConn, originalFn, wrappedFn)
-    local proxy = newproxy(true)
-    local meta = getmetatable(proxy)
-    meta.__isConnectionProxy = true
-
-    local info = {
-        real = real,
-        realConn = realConn,
-        originalFn = originalFn,
-        wrappedFn = wrappedFn,
-        connected = true
-    }
-    connectionStore[proxy] = info
-
-    -- Provide Disconnect/IsConnected methods via metatable lookup
-    meta.__index = function(_, k)
-        if k == "Disconnect" then
-            return function()
-                if info.connected and info.realConn and type(info.realConn.Disconnect) == "function" then
-                    pcall(function() info.realConn:Disconnect() end)
-                end
-                info.connected = false
-            end
-        elseif k == "IsConnected" then
-            return function()
-                return info.connected
-            end
-        else
-            -- forward unknown fields to realConn if possible
-            local v = info.realConn and info.realConn[k]
-            if type(v) == "function" then
-                return function(_, ...)
-                    return ToProxy(v(ToObject(info.realConn, ...)))
-                end
-            end
-            return v
-        end
-    end
-
-    -- tostring for debug
-    meta.__tostring = function() return ("ConnectionProxy(%s)"):format(tostring(real and real.Name or "unknown")) end
-
-    setmetatable(proxy, meta)
-    return proxy
-end
-
--- index handler used by proxyobject
 local function index(t, n)
-    local data = proxied[t]
-    local namecalls = data.namecalls
-    local obj = data.object
+	local data = proxied[t]
+	local namecalls = data.namecalls
+	local obj = data.object
 
-    if namecalls[n] then
-        return function(self, ...)
-            return ToProxy(namecalls[n](...))
-        end
-    end
+	if namecalls[n] then
+		return function(self, ...)
+			return ToProxy(namecalls[n](...))
+		end
+	end
 
-    local store = callbackStore[obj]
-    if store and store[n] ~= nil then
-        return store[n]
-    end
+	local store = callbackStore[obj]
+	if store and store[n] ~= nil then
+		return store[n]
+	end
 
-    local v = obj[n]
-    if type(v) == "function" then
-        return function(self, ...)
-            -- call original function on real object. convert args via ToObject, and results via ToProxy
-            return ToProxy(v(ToObject(self, ...)))
-        end
-    else
-        return ToProxy(v)
-    end
+	local v = obj[n]
+	if typeof(v) == "function" then
+		return function(self, ...)
+			return ToProxy(v(ToObject(self, ...)))
+		end
+	else
+		return ToProxy(v)
+	end
 end
 
--- namecall handler (handles :Connect etc.)
 local function namecall(t, ...)
-    local data = proxied[t]
-    local namecalls = data.namecalls
-    local obj = data.object
-    local method = env.getnamecallmethod()
-
-    if namecalls[method] then
-        return ToProxy(namecalls[method](...))
-    end
-
-    -- Intercept Connect specifically (robust: handle both RunService style or Instance events)
-    if method == "Connect" and select("#", ...) >= 1 then
-        local fn = select(1, ...)
-        if type(fn) ~= "function" then
-            error("Connect expects function", 2)
-        end
-
-        local real = obj
-        -- create wrapped function and call real:Connect(wrapped)
-        local wrapped = makeWrapperFor(real, "Connect", fn)
-        local ok, realConn = pcall(function() return real:Connect(wrapped) end)
-
-        if not ok or not realConn then
-            -- fallback: create fake connection proxy if Connect failed
-            local fakeConn = { Disconnect = function() end }
-            return makeConnectionProxy(real, fakeConn, fn, wrapped)
-        end
-
-        -- store wrapped under callbackStore using realConn as key (so lookup by connection possible)
-        local store = ensureStore(real)
-        store[realConn] = wrapped
-
-        -- return proxy connection to caller
-        return makeConnectionProxy(real, realConn, fn, wrapped)
-    end
-
-    -- Default: call actual namecall on real object
-    return ToProxy(obj[method](ToObject(t, ...)))
+	local data = proxied[t]
+	local namecalls = data.namecalls
+	local obj = data.object
+	local method = env.getnamecallmethod()
+	if namecalls[method] then
+		return ToProxy(namecalls[method](...))
+	end
+	return ToProxy(obj[method](ToObject(t, ...)))
 end
 
--- newindex handler captures OnInvoke etc.
 local function newindex(t, n, v)
-    local data = proxied[t]
-    local obj = data.object
+	local data = proxied[t]
+	local obj = data.object
 
-    if n == "OnInvoke" or n == "Callback" or n == "OnServerEvent" or n == "OnClientEvent" then
-        assert(type(v) == "function", n .. " must be a function")
-        local store = ensureStore(obj)
-        store[n] = v
-        -- also set a wrapped version on the real object so engine calls the wrapper
-        local wrapped = makeWrapperFor(obj, n, v)
-        store[n .. "_wrapped"] = wrapped
-        pcall(function() obj[n] = wrapped end)
-        return
-    end
+	if n == "OnInvoke" then
+		assert(type(v) == "function", "OnInvoke must be a function")
+		callbackStore[obj] = callbackStore[obj] or {}
+		callbackStore[obj][n] = v
+		return
+	end
 
-    local val = table.pack(ToObject(v))
-    obj[n] = table.unpack(val)
+	local val = table.pack(ToObject(v))
+	obj[n] = table.unpack(val)
 end
 
 local function ptostring(t)
-    local data = proxied[t]
-    return (data and data.object and data.object.Name) or tostring(t)
+	return t.Name
 end
 
 local function isProxy(obj)
-    return proxied[obj] ~= nil
+	return proxied[obj] ~= nil
 end
 
--- The proxyobject constructor
 function proxyobject(obj, namecalls)
-    if objects[obj] then
-        return objects[obj].proxy
-    end
-    namecalls = namecalls or {}
-    local proxy = newproxy(true)
-    local meta = getmetatable(proxy)
-    meta.__index = function(...) return index(...) end
-    meta.__namecall = function(...) return namecall(...) end
-    meta.__newindex = function(...) return newindex(...) end
-    meta.__tostring = function(...) return ptostring(...) end
-    meta.__metatable = getmetatable(obj)
+	if objects[obj] then
+		return objects[obj].proxy
+	end
+	namecalls = namecalls or {}
+	local proxy = newproxy(true)
+	local meta = getmetatable(proxy)
+	meta.__index = function(...)return index(...)end
+	meta.__namecall = function(...)return namecall(...)end
+	meta.__newindex = function(...)return newindex(...)end
+	meta.__tostring = function(...)return ptostring(...)end
+	meta.__metatable = getmetatable(obj)
 
-    local data = {}
-    data.object = obj
-    data.proxy = proxy
-    data.meta = meta
-    data.namecalls = namecalls
+	local data = {}
+	data.object = obj
+	data.proxy = proxy
+	data.meta = meta
+	data.namecalls = namecalls
 
-    proxied[proxy] = data
-    objects[obj] = data
-    return proxy
-end
-
--- Wrap existing instance fields (useful to retroactively capture OnInvoke assigned before proxying)
-local function wrapExistingInstance(real)
-    local keys = { "OnInvoke", "Callback", "OnServerEvent", "OnClientEvent" }
-    for _, k in ipairs(keys) do
-        local ok, val = pcall(function() return real[k] end)
-        if ok and type(val) == "function" then
-            local store = ensureStore(real)
-            if not store[k] then
-                local wrapped = makeWrapperFor(real, k, val)
-                store[k] = val
-                store[k .. "_wrapped"] = wrapped
-                pcall(function() real[k] = wrapped end)
-            end
-        end
-    end
-    return proxyobject(real)
-end
-
-local function wrapDescendants(parent)
-    for _, child in pairs(parent.GetDescendants and parent:GetDescendants() or {}) do
-        pcall(wrapExistingInstance, child)
-    end
+	proxied[proxy] = data
+	objects[obj] = data
+	return proxy
 end
 
 local pgame = proxyobject(game, {
@@ -1850,100 +1707,42 @@ for i, v in ipairs(game:GetDescendants()) do
 end
 game.DescendantAdded:Connect(proxyobject)
 
--- Lightweight Instance wrapper that returns proxies (preserves Instance.new semantics)
 local rInstance = Instance
 local fInstance = {}
 
 fInstance.new = function(name, par)
-    return proxyobject(rInstance.new(name, ToObject(par)))
+	return proxyobject(rInstance.new(name, ToObject(par)))
 end
 
 fInstance.fromExisting = function(obj)
-    return proxyobject(rInstance.fromExisting and rInstance.fromExisting(obj) or ToObject(obj))
+	return proxyobject(rInstance.fromExisting(obj))
 end
 
--- Keep an overload preserving extra behavior if needed
 local oldNew = fInstance.new
 fInstance.new = function(newType, parent)
-    assert(type(newType) == "string", "invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")", 2)
+	assert(type(newType) == "string", "invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")", 2)
 
-    local newInstance = oldNew(newType, parent)
+	local newInstance = oldNew(newType, parent)
 
-    if newType == "BindableFunction" then
-        callbackStore[ToObject(newInstance)] = callbackStore[ToObject(newInstance)] or {}
-    end
+	if newType == "BindableFunction" then
+		callbackStore[newInstance] = {}
+	end
 
-    return newInstance
+	return newInstance
 end
 
-env.Instance = fInstance -- export into env
+env.Instance = fInstance
 
--- getcallbackvalue expanded:
--- - passing in a raw function returns it (useful for tests)
--- - passing in a connection proxy returns the original function used to connect
--- - passing in a proxy/real instance + key returns stored callback for that key
-env.getcallbackvalue = function(obj, key)
-    if type(obj) == "function" then
-        return obj
+env.getcallbackvalue = function(r, t)
+    if type(r) == "function" then
+        return r
     end
 
-    -- connection proxy
-    if type(obj) == "table" and getmetatable(obj) and getmetatable(obj).__isConnectionProxy then
-        local info = connectionStore[obj]
-        if info then
-            return info.originalFn
-        end
-        -- fallback: search connectionStore table (some proxies might be raw tables created by makeConnectionProxy)
-        local fallback = connectionStore[obj]
-        if fallback then return fallback.originalFn end
-    end
-
-    -- if obj is a proxy, get real
-    local real = ToObject(obj)
-    if real == nil then return nil end
-
+    local real = ToObject(r)
     local store = callbackStore[real]
-    if not store then return nil end
-
-    if key then
-        if store[key] then
-            -- if stored value is wrapped, attempt to retrieve original via funcToInfo
-            local wrapped = store[key]
-            for orig, info in pairs(funcToInfo) do
-                if info.wrapped == wrapped then
-                    return info.original
-                end
-            end
-            return wrapped
-        end
-        if store[key .. "_wrapped"] then
-            local wrapped = store[key .. "_wrapped"]
-            for orig, info in pairs(funcToInfo) do
-                if info.wrapped == wrapped then
-                    return info.original
-                end
-            end
-            return wrapped
-        end
-        -- maybe store keyed by connection object (rare)
-        if store[key] then return store[key] end
-    else
-        -- no key: check common callback fields
-        local keys = { "OnInvoke", "Callback", "OnServerEvent", "OnClientEvent" }
-        for _, k in ipairs(keys) do
-            if store[k] then
-                local wrapped = store[k]
-                for orig, info in pairs(funcToInfo) do
-                    if info.wrapped == wrapped then
-                        return info.original
-                    end
-                end
-                return wrapped
-            end
-        end
+    if store then
+        return store[t]
     end
-
-    return nil
 end
 
 env.getrawmetatable = function(obj)
