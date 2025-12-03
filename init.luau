@@ -45,10 +45,14 @@ local Load = cm:FindFirstChild("CommonUtil")
 local cclosures = setmetatable({}, { __mode = "k" })
 
 local readonlyMap = setmetatable({}, { __mode = "k" })
+local proxyMap = setmetatable({}, { __mode = "k" })
+
 local scriptableTable = setmetatable({}, { __mode = "k" })
+
 local cachedInstances = setmetatable({}, { __mode = "k" })
 local callbackStore = setmetatable({}, { __mode = "k" })
 local raw_metas = setmetatable({}, { __mode = "k" })
+
 local instanceProperties = setmetatable({}, { __mode = "k" })
 local fakeUpvalueCache = setmetatable({}, { __mode = "k" })
 
@@ -1294,16 +1298,51 @@ local function removeReadonlyMeta(tbl)
 	end
 end
 
-env.setreadonly = function(tbl, bool)
+env.setreadonly = function(tbl, readonly)
 	assert(type(tbl) == "table", "setreadonly: table expected")
 
-	readonlyMap[tbl] = bool
+	-- Create proxy on first call
+	local proxy = proxyMap[tbl]
+	if not proxy then
+		proxy = {}
+		proxyMap[tbl] = proxy
 
-	if bool then
-		applyReadonlyMeta(tbl)
-	else
-		removeReadonlyMeta(tbl)
+		-- Move true table contents into storage
+		local storage = {}
+		for k, v in pairs(tbl) do
+			storage[k] = v
+		end
+
+		-- Clear original table so Lua never writes directly again
+		for k in pairs(tbl) do
+			rawset(tbl, k, nil)
+		end
+
+		-- Attach storage to proxy
+		proxy.__storage = storage
+		proxy.__target = tbl
+
+		-- Apply metatable
+		setmetatable(tbl, {
+			__index = function(_, k)
+				return storage[k]
+			end,
+			__newindex = function(_, k, v)
+				if readonlyMap[tbl] then
+					error("Attempt to modify readonly table", 2)
+				end
+				storage[k] = v
+			end,
+			__pairs = function()
+				return next, storage, nil
+			end,
+			__ipairs = function()
+				return ipairs(storage)
+			end,
+		})
 	end
+
+	readonlyMap[tbl] = readonly == true
 end
 
 env.isreadonly = function(tbl)
