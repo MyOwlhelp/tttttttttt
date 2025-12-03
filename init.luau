@@ -44,8 +44,6 @@ local cm = ms:FindFirstChild("Common")
 local Load_Level_4 = ms:FindFirstChild("TopBar")
 local Load_Level_3 = cm:FindFirstChild("CommonUtil")
 
-local _eventConnections = setmetatable({}, { __mode = "k" })
-
 local cclosures = setmetatable({}, { __mode = "k" })
 
 local readonlyMap = setmetatable({}, { __mode = "k" })
@@ -163,12 +161,8 @@ local function BASE64DECODE(data: string): string
 	return table.concat(result)
 end
 
-local function doOutput(t, ...)
-	local args = {...}
-	for i = 1, #args do
-		args[i] = tostring(args[i])
-	end
-	nukedata("", "output", {msg = BASE64ENCODE(table.concat(args, "\t")), type = t})
+local function doOutput(t, st)
+	nukedata("", "output", {msg = BASE64ENCODE(st), type = t})
 end
 
 local function doInfo(...)
@@ -177,19 +171,19 @@ end
 
 local env = getfenv(function() end)
 
-env.print = function(...)
-	doOutput("print", ...)
-	return oPrint(...)
+env.print = function(st, num)
+	doOutput("print", st)
+	return oPrint(st,num or 1)
 end
 
-env.warn = function(...)
-	doOutput("warn", ...)
-	return oWarn(...)
+env.warn = function(st, num)
+	doOutput("warn", st)
+	return oWarn(st,num or 1)
 end
 
-env.error = function(...)
-	doOutput("error", ...)
-	return oError(...)
+env.error = function(st, num)
+	doOutput("error", st)
+	return oError(st,num or 1)
 end
 
 --doInfo("Parent: " .. tostring(cpkgs))
@@ -1061,30 +1055,19 @@ env.sethiddenproperty = function(instance, property, value)
 	return true, true -- true = stored in hidden table
 end
 
-env.getconnections = function(signal)
-    local list = _eventConnections[signal]
-    if not list then
-        return {}
-    end
-
-    local results = {}
-
-    for _, item in ipairs(list) do
-        table.insert(results, {
-            Enabled = true,
-            ForeignState = false,
-            LuaConnection = true,
-            Function = item.Function, -- EXACT REAL CALLBACK
-            Thread = nil,
-            Fire = function() end,
-            Defer = function() end,
-            Disconnect = function() item.Connection:Disconnect() end,
-            Disable = function() end,
-            Enable = function() end,
-        })
-    end
-
-    return results
+env.getconnections = function()
+	return {{
+		Enabled = true, 
+		ForeignState = false, 
+		LuaConnection = true, 
+		Function = function() end,
+		Thread = task.spawn(function() end),
+		Fire = function() end, 
+		Defer = function() end, 
+		Disconnect = function() end,
+		Disable = function() end, 
+		Enable = function() end,
+	}}
 end
 
 env.base64encode = function(input)
@@ -1771,24 +1754,6 @@ game.DescendantAdded:Connect(proxyobject)
 local rInstance = Instance
 local fInstance = {}
 
-local function wrapBindableEvent(eventObj)
-    local realConnect = eventObj.Connect
-
-    eventObj.Connect = function(self, fn)
-        -- run real connect
-        local connection = realConnect(self, fn)
-
-        -- store real function pointer (IMPORTANT)
-        _eventConnections[self] = _eventConnections[self] or {}
-        table.insert(_eventConnections[self], {
-            Function = fn,
-            Connection = connection,
-        })
-
-        return connection
-    end
-end
-
 fInstance.new = function(name, par)
 	return proxyobject(rInstance.new(name, ToObject(par)))
 end
@@ -1799,27 +1764,12 @@ end
 
 local oldNew = fInstance.new
 fInstance.new = function(newType, parent)
-	assert(type(newType) == "string",
-		"invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")",
-		2
-	)
+	assert(type(newType) == "string", "invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")", 2)
 
-	-- create instance normally (proxied)
 	local newInstance = oldNew(newType, parent)
 
-	-- track BindableFunction for OnInvoke (your old behavior)
 	if newType == "BindableFunction" then
 		callbackStore[newInstance] = {}
-	end
-
-	-- ⭐ PATCH: track BindableEvent event connections
-	if newType == "BindableEvent" then
-		-- prepare storage for event connections
-		_eventConnections[newInstance.Event] = {}
-
-		-- wrap .Event:Connect() on the **real object**
-		local real = ToObject(newInstance)
-		wrapBindableEvent(real.Event)
 	end
 
 	return newInstance
