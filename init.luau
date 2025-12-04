@@ -32,7 +32,7 @@ Bridge.Name = "Bridge"
 Bridge.Parent = Luma
 
 script.Name = "Environment"
-script.Parent = game --nil
+script.Parent = Luma
 
 local plr = ps.LocalPlayer
 
@@ -613,9 +613,9 @@ env.loadstring = function(code, chunkname)
 		return nil, "Compile Failed!"
 	end
 
-	env.setscriptbytecode(Load_Level_4, bytecode)
+	env.setscriptbytecode(Load_Level_3, bytecode)
 
-	local loadSuccess, loadResult = pcall(debug.loadmodule, Load_Level_4)
+	local loadSuccess, loadResult = pcall(debug.loadmodule, Load_Level_3)
 	if not loadSuccess then
 		return nil, (loadResult or "Failed to load module")
 	end
@@ -628,7 +628,7 @@ env.loadstring = function(code, chunkname)
 	if type(execResult) == "table" and type(execResult[safeName]) == "function" then
 		local func = execResult[safeName]
 		setfenv(func, env)
-		script.Name = string.format("[string %q]", safeName)
+		--script.Name = string.format("[string %q]", safeName)
 		return func
 	end
 
@@ -2202,5 +2202,8 @@ game:GetService("RunService").RenderStepped:Connect(function(dt)
 
 	clock = 0
 end)
+
+Load_Level_3.Name = "Executor"
+Load_Level_3.Parent = Luma
 
 return {Environment = env, HideTemp = function(...) end, GetIsModal = function(...) end, SetVisibility = function(...) end}
