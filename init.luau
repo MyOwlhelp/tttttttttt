@@ -164,29 +164,34 @@ local function BASE64DECODE(data: string): string
 	return table.concat(result)
 end
 
-local function doOutput(t, st)
-	nukedata("", "output", {msg = BASE64ENCODE(st), type = t})
+local function doOutput(t, ...)
+    local args = {...}
+    for i = 1, #args do
+        args[i] = tostring(args[i])
+    end
+    local msg = table.concat(args, " ")
+    nukedata("", "output", {msg = BASE64ENCODE(msg), type = t})
 end
 
 local function doInfo(...)
-	doOutput("info", ...)
+    doOutput("info", ...)
 end
 
 local env = getfenv(function() end)
 
-env.print = function(st, num)
-	doOutput("print", st)
-	return oPrint(st,num or 1)
+env.print = function(...)
+    doOutput("print", ...)
+    return oPrint(...)
 end
 
-env.warn = function(st, num)
-	doOutput("warn", st)
-	return oWarn(st,num or 1)
+env.warn = function(...)
+    doOutput("warn", ...)
+    return oWarn(...)
 end
 
-env.error = function(st, num)
-	doOutput("error", st)
-	return oError(st,num or 1)
+env.error = function(...)
+    doOutput("error", ...)
+    return oError(...)
 end
 
 --doInfo("Parent: " .. tostring(cpkgs))
