@@ -1,4 +1,5 @@
 --!native
+--!optimize 2
 local _VERSION = "1.0.0"
 local ProcessID = "%-PROCESS-ID-%"
 local BridgeUrl = "http://localhost:9611"
@@ -587,7 +588,7 @@ env.loadstring = function(code, chunkname)
 	local safeName = string.gsub(chunkname, "[^%w_]", "")
 	if safeName == "" then safeName = "Luma" end
 
-	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...) " .. code .. "\n end }"
+	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...)\n" .. code .. "\nend }"
 	
 	local bytecode = env.compile(wrapper, true)
 	if type(bytecode) ~= "string" or #bytecode <= 1 then
