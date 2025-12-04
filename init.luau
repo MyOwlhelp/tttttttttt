@@ -2138,20 +2138,6 @@ else
 	doInfo("Testing Request: Failed")
 end]]
 
---[[local DecompileYe = env.request({
-	Url = "https://raw.githubusercontent.com/verysigmapro/UniversalSynSaveInstance-With-Save-Terrain/refs/heads/main/konstantdecompiler.lua",
-	Method = "GET"
-})
-
-if DecompileYe and DecompileYe.Body then
-	local func, err = env.loadstring(DecompileYe.Body)
-	if func then
-		env.decompile = func().decompile
-	else
-		warn("Decompiler Failed To Load Error: " .. tostring(err))
-	end
-end]]
-
 local DrawingRes = env.request({
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/drawinglib",
 	Method = "GET"
@@ -2182,8 +2168,8 @@ local rawSaveInstance = env.request({
 
 local synsaveinstance = env.loadstring(rawSaveInstance)()
 
-env.saveinstance = function(options)
-	return synsaveinstance(options or {})
+env.saveinstance = function()
+	return synsaveinstance({IgnoreDefaultPlayerScripts = false})
 end
 
 doInfo("Luma Injected!")
