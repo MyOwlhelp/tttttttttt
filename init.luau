@@ -531,9 +531,7 @@ end
 env.getcustomasset = function(path)
 	assert(type(path) == "string", "getcustomasset expected string path")
 
-	return savedFiles[path] or "rbxassetid://0"
-
-	--return env.readfile(path)
+	return savedFiles[path] or env.readfile(path)
 	--[[return nukedata("", "getcustomasset", {
 		p = path
 	})]]
