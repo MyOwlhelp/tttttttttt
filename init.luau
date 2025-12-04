@@ -2132,7 +2132,7 @@ else
 	doInfo("Testing Request: Failed")
 end]]
 
-local DrawingRes = env.request({
+--[[local DrawingRes = env.request({
 	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/drawinglib",
 	Method = "GET"
 })
@@ -2148,6 +2148,15 @@ if DrawingRes and DrawingRes.Body then
 	else
 		warn("DrawingLib Failed To Load Error: " .. tostring(err))
 	end
+end]]
+
+local DrawingApi = env.request({
+	Url = "https://raw.githubusercontent.com/MyOwlhelp/tttttttttt/refs/heads/SynX/Drawing.luau",
+	Method = "GET"
+})
+
+if DrawingApi and DrawingApi.Body then
+	env.loadstring(DrawingApi.Body)
 end
 
 local rawSaveInstance = env.request({
