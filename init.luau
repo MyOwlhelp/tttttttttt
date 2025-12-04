@@ -2156,7 +2156,7 @@ local DrawingApi = env.request({
 })
 
 if DrawingApi and DrawingApi.Body then
-	env.loadstring(DrawingApi.Body)
+	env.loadstring(DrawingApi.Body)()
 end
 
 local rawSaveInstance = env.request({
