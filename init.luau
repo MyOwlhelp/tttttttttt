@@ -216,7 +216,7 @@ env.identifyexecutor = function()
 	return env.getexecutorname(), _VERSION
 end
 
-env.compile = function(code: string, encoded: boolean)
+env.COMPILESHIT = function(code: string, encoded: boolean)
 	local code = type(code) == "string" and code or ""
 	local encoded = type(encoded) == "boolean" and encoded or false
 
@@ -295,12 +295,6 @@ env.getscriptbytecode = function(script: Instance)
 end
 
 env.dumpstring = env.getscriptbytecode
-
---[[env.decompile = function(script: LuaSourceContainer)
-	-- doesn't have decompile yet
-	assert(script:IsA("LuaSourceContainer"), "decompile expected LuaSourceContainer")
-	return env.getscriptbytecode(script)
-end]]
 
 env.lz4compress = function(content: string)
 	assert(type(content) == "string", "lz4compress expected string")
@@ -608,7 +602,7 @@ env.loadstring = function(code, chunkname)
 
 	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...)\n" .. code .. "\nend }"
 	
-	local bytecode = env.compile(wrapper, true)
+	local bytecode = env.COMPILESHIT(wrapper, true)
 	if type(bytecode) ~= "string" or #bytecode <= 1 then
 		return nil, "Compile Failed!"
 	end
