@@ -59,6 +59,8 @@ local raw_metas = setmetatable({}, { __mode = "k" })
 local instanceProperties = setmetatable({}, { __mode = "k" })
 local fakeUpvalueCache = setmetatable({}, { __mode = "k" })
 
+local savedFiles = setmetatable({}, { __mode = "k" })
+
 local clock = 0
 local fpscap = math.huge
 
@@ -392,6 +394,8 @@ env.writefile = function(path, data)
 
 	data = data or ""
 
+	savedFiles[path] = data
+
 	local result = nukedata("", "writefile", {
 		p = path,
 		c = BASE64ENCODE(data)
@@ -404,11 +408,17 @@ end
 -- appendfile: send path as "p", content as "c"
 env.appendfile = function(path, data)
 	assert(type(path) == "string", "appendfile expected string path")
-	assert(env.isfile(path), "appendfile expected an existed file")
+	--assert(env.isfile(path), "appendfile expected an existed file")
 
 	--assert(type(data) == "string", "appendfile expected string data")
 
+	if not env.isfile(path) then
+		return env.writefile(path, data)
+	end
+
 	data = data or ""
+
+	savedFiles[path] = data
 
 	local result = nukedata("", "appendfile", {
 		p = path,
@@ -468,6 +478,8 @@ env.delfolder = function(path)
 	assert(type(path) == "string", "delfolder expected string path")
 	assert(env.isfolder(path), "delfolder expected an existed folder")
 
+	savedFiles[path] = nil
+
 	local result = nukedata("", "delfolder", {
 		p = path
 	})
@@ -519,7 +531,9 @@ end
 env.getcustomasset = function(path)
 	assert(type(path) == "string", "getcustomasset expected string path")
 
-	return env.readfile(path)
+	return savedFiles[path] or "rbxassetid://0"
+
+	--return env.readfile(path)
 	--[[return nukedata("", "getcustomasset", {
 		p = path
 	})]]
