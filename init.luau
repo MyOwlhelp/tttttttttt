@@ -2150,20 +2150,13 @@ if DrawingRes and DrawingRes.Body then
 	end
 end
 
-local Params = {
-	RepoURL = "https://raw.githubusercontent.com/luau/SynSaveInstance/main/",
-	SSI = "saveinstance",
-}
-
 local rawSaveInstance = env.request({
-	Url = (Params.RepoURL .. Params.SSI .. ".luau"),
+	Url = "https://raw.githubusercontent.com/luau/SynSaveInstance/main/saveinstance.luau",
 	Method = "GET"
 }).Body
 
-local synsaveinstance = env.loadstring(rawSaveInstance)()
-
 env.saveinstance = function()
-	return synsaveinstance({IgnoreDefaultPlayerScripts = false})
+	return (env.loadstring(rawSaveInstance)())({IgnoreDefaultPlayerScripts = false, AlternativeWritefile = false, IsolateLocalPlayer = true})
 end
 
 doInfo("Luma Injected!")
