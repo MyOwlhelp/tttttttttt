@@ -190,7 +190,7 @@ env.error = function(st, num)
 end
 
 --doInfo("Parent: " .. tostring(cpkgs))
-doInfo("Luma v".._VERSION)
+--doInfo("Luma v".._VERSION)
 doInfo("Loading Environment...")
 
 cclosures[env.print] = true
@@ -528,14 +528,14 @@ env.dofile = function(path)
 	return chunk()
 end
 
-env.getcustomasset = function(path)
+--[[env.getcustomasset = function(path)
 	assert(type(path) == "string", "getcustomasset expected string path")
 
 	return savedFiles[path] or env.readfile(path)
-	--[[return nukedata("", "getcustomasset", {
-		p = path
-	})]]
-end
+	--return nukedata("", "getcustomasset", {
+	--	p = path
+	--})
+end]]
 
 local clonerefs = {}
 env.cloneref = function(obj)
