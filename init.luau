@@ -519,9 +519,10 @@ end
 env.getcustomasset = function(path)
 	assert(type(path) == "string", "getcustomasset expected string path")
 
-	return nukedata("", "getcustomasset", {
+	return env.readfile(path)
+	--[[return nukedata("", "getcustomasset", {
 		p = path
-	})
+	})]]
 end
 
 local clonerefs = {}
