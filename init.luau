@@ -71,6 +71,45 @@ local BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345
 local Vernushwd = "Luma-HWID-" .. plr.UserId
 
 local resc = 3
+local function nukedata(dta, typ, set)
+	local timeout = 5
+	local result, clock = nil, tick()
+
+	dta = dta or ""
+	typ = typ or "none"
+	set = set or {}
+
+	hs:RequestInternal({
+		Url = BridgeUrl .. "/handle",
+		Body = typ .. "\n" .. ProcessID .. "\n" .. hs:JSONEncode(set) .. "\n" .. dta,
+		Method = "POST",
+		Headers = {
+			['Content-Type'] = "text/plain",
+		}
+	}):Start(function(success, body)
+		result = body
+		result['Success'] = success
+	end)
+
+	while not result do task.wait()
+		if (tick() - clock > timeout) then
+			break
+		end
+	end
+
+	if not result or not result.Success then
+		if resc <= 0 then
+			warn("[ERROR]: Server not responding!")
+			return {}
+		else
+			resc -= 1
+		end
+	else
+		resc = 3
+	end
+
+	return result and result.Body or ""
+end
 
 local DECODE_TABLE = setmetatable({}, { __mode = "k" })
 for i = 1, #BASE64_CHARS do
@@ -125,8 +164,6 @@ local function BASE64DECODE(data: string): string
 	return table.concat(result)
 end
 
-local nukedata
-
 local function doOutput(t, ...)
     local args = {...}
     for i = 1, #args do
@@ -138,46 +175,6 @@ end
 
 local function doInfo(...)
     doOutput("info", ...)
-end
-
-nukedata = function(dta, typ, set)
-	local timeout = 5
-	local result, clock = nil, tick()
-
-	dta = dta or ""
-	typ = typ or "none"
-	set = set or {}
-
-	hs:RequestInternal({
-		Url = BridgeUrl .. "/handle",
-		Body = typ .. "\n" .. ProcessID .. "\n" .. hs:JSONEncode(set) .. "\n" .. dta,
-		Method = "POST",
-		Headers = {
-			['Content-Type'] = "text/plain",
-		}
-	}):Start(function(success, body)
-		result = body
-		result['Success'] = success
-	end)
-
-	while not result do task.wait()
-		if (tick() - clock > timeout) then
-			break
-		end
-	end
-
-	if not result or not result.Success then
-		if resc <= 0 then
-			doInfo("[ERROR]: Server not responding!")
-			return {}
-		else
-			resc -= 1
-		end
-	else
-		resc = 3
-	end
-
-	return result and result.Body or ""
 end
 
 local env = getfenv(function() end)
