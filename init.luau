@@ -67,8 +67,6 @@ local fpscap = math.huge
 
 local hasConsole = false
 
-local BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-
 local Vernushwd = "Luma-HWID-" .. plr.UserId
 
 local resc = 3
@@ -112,7 +110,9 @@ local function nukedata(dta, typ, set)
 	return result and result.Body or ""
 end
 
---[[local DECODE_TABLE = setmetatable({}, { __mode = "k" })
+--[[local BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+local DECODE_TABLE = setmetatable({}, { __mode = "k" })
 for i = 1, #BASE64_CHARS do
 	DECODE_TABLE[string.sub(BASE64_CHARS, i, i)] = i - 1
 end
@@ -166,10 +166,14 @@ local function BASE64DECODE(data: string): string
 end]]
 
 local function BASE64ENCODE(data: string): string
+	-- faster lol
+	assert(type(data) == "string", "invalid argument #1 to 'Encode', expected string got '" .. typeof(data) .. "'")
 	return buffer.tostring(es:Base64Encode(buffer.fromstring(data)))
 end
 
 local function BASE64DECODE(data: string): string
+	-- faster lol
+	assert(type(data) == "string", "invalid argument #1 to 'Decode', expected string got '" .. typeof(data) .. "'")
 	return buffer.tostring(es:Base64Decode(buffer.fromstring(data)))
 end
 
