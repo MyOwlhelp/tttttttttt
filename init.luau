@@ -9,6 +9,7 @@ local sc = game:GetService("ScriptContext")
 local hs = game:GetService("HttpService")
 local is = game:GetService("InsertService")
 local ps = game:GetService("Players")
+local es = game:GetService("EncodingService")
 
 local identity = 8
 
@@ -111,7 +112,7 @@ local function nukedata(dta, typ, set)
 	return result and result.Body or ""
 end
 
-local DECODE_TABLE = setmetatable({}, { __mode = "k" })
+--[[local DECODE_TABLE = setmetatable({}, { __mode = "k" })
 for i = 1, #BASE64_CHARS do
 	DECODE_TABLE[string.sub(BASE64_CHARS, i, i)] = i - 1
 end
@@ -162,6 +163,14 @@ local function BASE64DECODE(data: string): string
 		i = i + 4
 	end
 	return table.concat(result)
+end]]
+
+local function BASE64ENCODE(data: string): string
+	return buffer.tostring(es:Base64Encode(buffer.fromstring(data)))
+end
+
+local function BASE64DECODE(data: string): string
+	return buffer.tostring(es:Base64Decode(buffer.fromstring(data)))
 end
 
 local function doOutput(t, ...)
