@@ -190,7 +190,7 @@ local function doInfo(...)
     doOutput("info", ...)
 end
 
-local env = getfenv(function() end)
+local env = getfenv(0) --getfenv(function() end)
 
 env.print = function(...)
     doOutput("print", ...)
@@ -2119,6 +2119,7 @@ env.isourclosure = env.isexecutorclosure
 
 -- listener
 
+nukedata("", "listen")
 task.spawn(function()
 	while true do
 		local res = nukedata("", "listen")
@@ -2160,24 +2161,6 @@ if test and test.Body and test.Body:gsub("^%s*(.-)%s*$", "%1") == "test" then
 	doInfo("Testing Request: Success")
 else
 	doInfo("Testing Request: Failed")
-end]]
-
---[[local DrawingRes = env.request({
-	Url = "https://raw.githubusercontent.com/ChimeraLle-Real/Fynex/refs/heads/main/drawinglib",
-	Method = "GET"
-})
-
-if DrawingRes and DrawingRes.Body then
-	local func, err = env.loadstring(DrawingRes.Body)
-	if func then
-		local drawing = func()
-		env.Drawing = drawing.Drawing
-		for i, v in drawing.functions do
-			env[i] = v
-		end
-	else
-		warn("DrawingLib Failed To Load Error: " .. tostring(err))
-	end
 end]]
 
 local DrawingApi = env.request({
