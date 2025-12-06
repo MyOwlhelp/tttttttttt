@@ -167,13 +167,13 @@ end]]
 
 local function BASE64ENCODE(data: string): string
 	-- faster lol
-	assert(type(data) == "string", "invalid argument #1 to 'Encode', expected string got '" .. typeof(data) .. "'")
+	assert(type(data) == "string", "Base64Encode expects string, got " .. typeof(data))
 	return buffer.tostring(es:Base64Encode(buffer.fromstring(data)))
 end
 
 local function BASE64DECODE(data: string): string
 	-- faster lol
-	assert(type(data) == "string", "invalid argument #1 to 'Decode', expected string got '" .. typeof(data) .. "'")
+	assert(type(data) == "string", "Base64Decode expects string, got " .. typeof(data))
 	return buffer.tostring(es:Base64Decode(buffer.fromstring(data)))
 end
 
@@ -1803,8 +1803,10 @@ game.DescendantAdded:Connect(proxyobject)
 local rInstance = Instance
 local fInstance = {}
 
+local rawNew = rInstance.new
+
 fInstance.new = function(name, par)
-	return proxyobject(rInstance.new(name, ToObject(par)))
+	return proxyobject(rawNew(name, ToObject(par)))
 end
 
 fInstance.fromExisting = function(obj)
@@ -1812,8 +1814,12 @@ fInstance.fromExisting = function(obj)
 end
 
 local oldNew = fInstance.new
+
 fInstance.new = function(newType, parent)
-	assert(type(newType) == "string", "invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")", 2)
+	assert(type(newType) == "string", 
+        "invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")",
+        2
+    )
 
 	local newInstance = oldNew(newType, parent)
 
