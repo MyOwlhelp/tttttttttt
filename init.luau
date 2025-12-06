@@ -1792,7 +1792,7 @@ env.Workspace = pworkspace
 local pscript = proxyobject(script)
 env.script = pscript
 
-local hui = proxyobject(Instance.new("ScreenGui", cg))
+local hui = proxyobject(Instance.new("Folder", cg)) -- Old is ScreenGui
 hui.Name = GenerateName() --"hidden_ui_container"
 
 for i, v in ipairs(game:GetDescendants()) do
@@ -1800,27 +1800,41 @@ for i, v in ipairs(game:GetDescendants()) do
 end
 game.DescendantAdded:Connect(proxyobject)
 
+-- Save the original Instance table and constructor safely
 local rInstance = Instance
-local fInstance = {}
 local rawNew = rInstance.new
 
-local function makeProxy(typeName, parent)
-    local real = rawNew(typeName, ToObject(parent))
-    return real, proxyobject(real)
-end
+local fInstance = {}
 
 fInstance.new = function(typeName, parent)
-    assert(type(typeName) == "string",
-        "invalid argument #1 to 'Instance.new' (string expected, got " .. type(typeName) .. ")", 2
-    )
+    -- 1. Validate the className argument
+    if type(typeName) ~= "string" then
+        error("invalid argument #1 to 'Instance.new' (string expected, got " .. type(typeName) .. ")", 2)
+    end
 
-    local real, proxy = makeProxy(typeName, parent)
+    -- 2. Handle the parent argument (unwrap it if it's a proxy)
+    local realParent
+    if parent ~= nil then
+        realParent = ToObject(parent)
+    end
 
+    -- 3. Create the real Object
+    -- We use an if-statement to ensure we don't pass an explicit 'nil' to rawNew
+    -- as some internal C functions behave differently when receiving 2 args vs 1.
+    local real
+    if realParent then
+        real = rawNew(typeName, realParent)
+    else
+        real = rawNew(typeName)
+    end
+
+    -- 4. Initialize special stores (like for Bindables)
     if typeName == "BindableFunction" then
         callbackStore[real] = {}
     end
 
-    return proxy
+    -- 5. Return the proxy wrapper
+    return proxyobject(real)
 end
 
 fInstance.fromExisting = function(obj)
@@ -2119,7 +2133,6 @@ task.spawn(function()
 					local suc,ress = pcall(loaded)
 					if not suc then
 						env.warn(ress)
-						return ress
 					end
 					return ress
 				else
