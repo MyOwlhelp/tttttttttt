@@ -11,8 +11,8 @@ drawingUI.Parent = gethui()
 
 -- Drawing configuration
 local drawingIndex = 1
-local drawings = {}
-local drawingimages = {}
+local drawings = setmetatable({}, { __mode = "k" })
+local drawingimages = setmetatable({}, { __mode = "k" })
 
 -- Base drawing object template
 local baseDrawingObj = {
@@ -47,7 +47,7 @@ end
 
 -- Utility functions
 -- [FIXED] Correctly iterates using the object ID (k) to find and destroy children.
-local cleardrawcache = newcclosure(function()
+local function cleardrawcache()
     for k, v in pairs(drawings) do -- k is objId, v is proxy
         local childName = "Drawing_" .. tostring(k)
         local child = drawingUI:FindFirstChild(childName)
@@ -60,10 +60,10 @@ local cleardrawcache = newcclosure(function()
     -- We still clear both tables as per the original script.
     table.clear(drawings)
     table.clear(drawingimages)
-end)
+end
 
 -- [FIXED] Correctly checks if 'thing' is a valid proxy table by iterating 'drawings'.
-local isrenderobj = newcclosure(function(thing)
+local function isrenderobj(thing)
     if type(thing) ~= "table" then
         return false
     end
@@ -76,10 +76,10 @@ local isrenderobj = newcclosure(function(thing)
     end
     
     return false
-end)
+end
 
 -- [FIXED] Wrapped in pcall for safety, in case 'obj' is nil or not a table.
-local getrenderproperty = newcclosure(function(obj, prop)
+local function getrenderproperty(obj, prop)
     local success, value = pcall(function()
         return obj[prop]
     end)
@@ -88,10 +88,10 @@ local getrenderproperty = newcclosure(function(obj, prop)
         return nil
     end
     return value
-end)
+end
 
 -- [FIXED] Wrapped in pcall for safety and returns success status.
-local setrenderproperty = newcclosure(function(obj, prop, val)
+local function setrenderproperty(obj, prop, val)
     local success, err = pcall(function()
         obj[prop] = val
     end)
@@ -99,7 +99,7 @@ local setrenderproperty = newcclosure(function(obj, prop, val)
         warn("setrenderproperty failed:", err)
     end
     return success
-end)
+end
 
 -- Drawing library setup
 local Drawing = {
@@ -112,7 +112,7 @@ local Drawing = {
 }
 
 -- Drawing object creation
-Drawing.new = newcclosure(function(drawingType)
+function Drawing.new(drawingType)
     drawingIndex = drawingIndex + 1
     local objId = drawingIndex
     
@@ -655,7 +655,7 @@ Drawing.new = newcclosure(function(drawingType)
     else
         error("Unsupported drawing type: "..tostring(drawingType))
     end
-end)
+end
 
 -- Expose to global environment
 getgenv().Drawing = Drawing
