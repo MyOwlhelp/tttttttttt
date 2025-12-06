@@ -1802,32 +1802,30 @@ game.DescendantAdded:Connect(proxyobject)
 
 local rInstance = Instance
 local fInstance = {}
-
 local rawNew = rInstance.new
 
-fInstance.new = function(name, par)
-	return proxyobject(rawNew(name, ToObject(par)))
+local function makeProxy(typeName, parent)
+    local real = rawNew(typeName, ToObject(parent))
+    return real, proxyobject(real)
+end
+
+fInstance.new = function(typeName, parent)
+    assert(type(typeName) == "string",
+        "invalid argument #1 to 'Instance.new' (string expected, got " .. type(typeName) .. ")", 2
+    )
+
+    local real, proxy = makeProxy(typeName, parent)
+
+    if typeName == "BindableFunction" then
+        callbackStore[real] = {}
+    end
+
+    return proxy
 end
 
 fInstance.fromExisting = function(obj)
-	return proxyobject(rInstance.fromExisting(obj))
-end
-
-local oldNew = fInstance.new
-
-fInstance.new = function(newType, parent)
-	assert(type(newType) == "string", 
-        "invalid argument #1 to 'Instance.new' (string expected, got " .. type(newType) .. ")",
-        2
-    )
-
-	local newInstance = oldNew(newType, parent)
-
-	if newType == "BindableFunction" then
-		callbackStore[newInstance] = {}
-	end
-
-	return newInstance
+    local real = ToObject(obj)
+    return proxyobject(real)
 end
 
 env.Instance = fInstance
