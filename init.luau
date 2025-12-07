@@ -190,7 +190,7 @@ local function doInfo(...)
     doOutput("info", ...)
 end
 
-local env = getfenv(0) --getfenv(function() end)
+local env = getfenv(1) --getfenv(function() end)
 
 env.print = function(...)
     doOutput("print", ...)
