@@ -1629,7 +1629,7 @@ end
 local FirstTest = GenerateError(OverlapParams.new())
 local SecondTest = GenerateError(Color3.new())
 
-local cachedmethods = {}
+--[[local cachedmethods = {}
 env.getnamecallmethod = function()
 	local _, err = pcall(FirstTest)
 	local method = if type(err) == "string" then err:match("^(.+) is not a valid member of %w+$") else nil
@@ -1656,6 +1656,15 @@ env.getnamecallmethod = function()
 	end
 	cachedmethods[coroutine.running()] = method
 	return method
+end]]
+
+env.getnamecallmethod = function()
+    local info = debug.getinfo(3, "nS")
+    if info and info.what == "C" then
+        return info.name or "unknown"
+    else
+        return "unknown"
+    end
 end
 
 local proxyobject
