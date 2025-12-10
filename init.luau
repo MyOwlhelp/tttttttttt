@@ -228,7 +228,21 @@ env.identifyexecutor = function()
 	return env.getexecutorname(), _VERSION
 end
 
-env.COMPILESHIT = function(code: string, encoded: boolean)
+local function CompileScript(code: string, encoded: boolean)
+	local code = type(code) == "string" and code or ""
+	local encoded = type(encoded) == "boolean" and encoded or true
+
+	local success, res = pcall(function() 
+		return nukedata(code, "compile", {
+			enc = tostring(encoded),
+			to_compile = BASE64ENCODE(code)
+		})
+	end)
+
+	return (success and res) or ""
+end
+
+--[[env.COMPILESHIT = function(code: string, encoded: boolean)
 	local code = type(code) == "string" and code or ""
 	local encoded = type(encoded) == "boolean" and encoded or false
 
@@ -241,7 +255,7 @@ env.COMPILESHIT = function(code: string, encoded: boolean)
 	end)
 
 	return (success and res) or ""
-end
+end]]
 
 env.setclipboard = function(text : string)
 	return nukedata("", "setclipboard", {
@@ -614,7 +628,7 @@ env.loadstring = function(code, chunkname)
 
 	local wrapper = "return { [ [[" .. safeName .. "]] ] = function(...)\n" .. code .. "\nend }"
 	
-	local bytecode = env.COMPILESHIT(wrapper, true)
+	local bytecode = --[[env.COMPILESHIT]]CompileScript(wrapper, true)
 	if type(bytecode) ~= "string" or #bytecode <= 1 then
 		return nil, "Compile Failed!"
 	end
