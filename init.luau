@@ -5,7 +5,6 @@ local ProcessID = "%-PROCESS-ID-%"
 local BridgeUrl = "http://localhost:9611"
 
 local cg = game:GetService("CoreGui")
-local sc = game:GetService("ScriptContext")
 local hs = game:GetService("HttpService")
 local is = game:GetService("InsertService")
 local ps = game:GetService("Players")
