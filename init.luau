@@ -21,7 +21,7 @@ local oError = error
 
 local Luma = Instance.new("Folder")
 Luma.Name = "Luma"
-Luma.Parent = cg --cpkgs
+Luma.Parent = cpkgs
 
 local Pointer = Instance.new("Folder")
 Pointer.Name = "Pointer"
