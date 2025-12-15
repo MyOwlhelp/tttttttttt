@@ -166,13 +166,11 @@ end]]
 
 local function BASE64ENCODE(data): string
 	-- faster lol
-	assert(type(data) == "string", "Base64Encode expects string, got " .. typeof(data))
 	return buffer.tostring(es:Base64Encode(buffer.fromstring(data)))
 end
 
 local function BASE64DECODE(data): string
 	-- faster lol
-	assert(type(data) == "string", "Base64Decode expects string, got " .. typeof(data))
 	return buffer.tostring(es:Base64Decode(buffer.fromstring(data)))
 end
 
