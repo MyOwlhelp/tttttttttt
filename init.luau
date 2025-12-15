@@ -1449,9 +1449,6 @@ env.getgc = function()
 end
 
 env.getscripthash = function(instance)
-	if typeof(instance) ~= "Instance" or (not instance:IsA("LocalScript") and not instance:IsA("ModuleScript")) then
-		error("expected LocalScript or ModuleScript as argument #1") 
-	end
 	return instance:GetHash()
 end
 
