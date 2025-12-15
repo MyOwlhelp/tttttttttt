@@ -1131,12 +1131,18 @@ env.getconnections = function()
 end
 
 env.base64encode = function(input)
+	if not input then
+		return ""
+	end
 	--assert(type(input) == "string", "base64 encode expected string input")
 	return BASE64ENCODE(input)
 end
 env.base64_encode = env.base64encode
 
 env.base64decode = function(encoded)
+	if not encoded then
+		return ""
+	end
 	--assert(type(encoded) == "string", "base64 decode expected encoded string")
 	return BASE64DECODE(encoded)
 end
