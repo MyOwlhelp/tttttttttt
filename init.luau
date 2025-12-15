@@ -109,7 +109,7 @@ local function nukedata(dta, typ, set)
 	return result and result.Body or ""
 end
 
-local BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+--[[local BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 local DECODE_TABLE = setmetatable({}, { __mode = "k" })
 for i = 1, #BASE64_CHARS do
@@ -162,6 +162,18 @@ local function BASE64DECODE(data: string): string
 		i = i + 4
 	end
 	return table.concat(result)
+end]]
+
+local function BASE64ENCODE(data): string
+	-- faster lol
+	assert(type(data) == "string", "Base64Encode expects string, got " .. typeof(data))
+	return buffer.tostring(es:Base64Encode(buffer.fromstring(data)))
+end
+
+local function BASE64DECODE(data): string
+	-- faster lol
+	assert(type(data) == "string", "Base64Decode expects string, got " .. typeof(data))
+	return buffer.tostring(es:Base64Decode(buffer.fromstring(data)))
 end
 
 local function doOutput(t, ...)
