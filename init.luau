@@ -1726,7 +1726,14 @@ local function index(t, n)
 		return store[n]
 	end
 
-	local v = obj[n]
+	local ok, v = pcall(function()
+		return obj[n]
+	end)
+
+	if not ok then
+		return nil
+	end
+
 	if typeof(v) == "function" then
 		return function(self, ...)
 			return ToProxy(v(ToObject(self, ...)))
@@ -1741,10 +1748,17 @@ local function namecall(t, ...)
 	local namecalls = data.namecalls
 	local obj = data.object
 	local method = env.getnamecallmethod()
+
 	if namecalls[method] then
 		return ToProxy(namecalls[method](...))
 	end
-	return ToProxy(obj[method](ToObject(t, ...)))
+
+	local fn = obj[method]
+	if typeof(fn) ~= "function" then
+		return nil
+	end
+
+	return ToProxy(fn(ToObject(t, ...)))
 end
 
 local function newindex(t, n, v)
@@ -1817,7 +1831,7 @@ hui.Name = GenerateName() --"hidden_ui_container"
 for i, v in ipairs(game:GetDescendants()) do
 	proxyobject(v)
 end
---game.DescendantAdded:Connect(proxyobject)
+game.DescendantAdded:Connect(proxyobject)
 
 -- Save the original Instance table and constructor safely
 local rInstance = Instance
