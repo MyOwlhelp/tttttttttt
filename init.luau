@@ -1817,7 +1817,7 @@ hui.Name = GenerateName() --"hidden_ui_container"
 for i, v in ipairs(game:GetDescendants()) do
 	proxyobject(v)
 end
-game.DescendantAdded:Connect(proxyobject)
+--game.DescendantAdded:Connect(proxyobject)
 
 -- Save the original Instance table and constructor safely
 local rInstance = Instance
