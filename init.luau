@@ -2147,6 +2147,8 @@ env.isourclosure = env.isexecutorclosure
 
 -- listener
 
+nukedata("","listen") -- .
+
 local Executions = {}
 local LastExecution = ""
 local PollingRate = 1
