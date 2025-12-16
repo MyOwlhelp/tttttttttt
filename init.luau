@@ -2147,30 +2147,46 @@ env.isourclosure = env.isexecutorclosure
 
 -- listener
 
-nukedata("", "listen")
+local Executions = {}
+local LastExecution = ""
+local PollingRate = 1
+
 task.spawn(function()
-	while true do
-		local res = nukedata("", "listen")
-		if typeof(res) == "table" then
-			Luma:Destroy()
-			break
-		end
-		if res and #res > 1 then
-			task.spawn(function()
-				local loaded, ee = env.loadstring(res)
-				if loaded then
-					local suc,ress = pcall(loaded)
-					if not suc then
-						env.warn(ress)
-					end
-					return ress
-				else
-					env.warn(ee)
-				end
-			end)
-		end
-		task.wait()
-	end
+    while true do
+        task.wait(PollingRate)
+        
+        local networkSuccess, res = pcall(nukedata, "", "listen")
+
+        if networkSuccess then
+            if typeof(res) == "table" then
+                if Luma and Luma.Destroy then Luma:Destroy() end
+                break
+            end
+
+            if type(res) == "string" and #res > 1 then
+                if res ~= LastExecution then
+                    LastExecution = res
+                    
+                    table.insert(Executions, {os.time(), res})
+
+                    task.spawn(function()
+                        local func, syntaxErr = env.loadstring(res)
+                        
+                        if func then
+                            local runSuccess, runErr = pcall(func)
+                            if not runSuccess then
+                                env.warn("[Execution Error]:", runErr)
+                            end
+                        else
+                            env.warn("[Syntax Error]:", syntaxErr)
+                        end
+                    end)
+                end
+            end
+        else
+            env.warn("[Network Error]:", res)
+        end
+    end
 end)
 
 --[[local test = env.request({
