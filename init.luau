@@ -404,140 +404,151 @@ env.consoledestroy = env.rconsoledestroy
 env.consoleinput = env.rconsoleinput
 env.consoleprint = env.rconsoleprint
 
-local fs = {
-	readfile = function(path, internal)
-		assert(type(path) == "string", "readfile expected string path")
-		assert(fs.isfile(path, internal), "readfile expected an existed file")
+local fs = {}
 
-		local result = nukedata("", "readfile", {
-			p = path,
-			inter = internal or false
-		})
+fs.readfile = function(path, internal)
+    assert(type(path) == "string", "readfile expected string path")
+    assert(fs.isfile(path, internal), "readfile expected an existed file") 
 
-		return BASE64DECODE(result)
-	end,
-	writefile = function(path, data, internal)
-		assert(type(path) == "string", "writefile expected string path")
+    local result = nukedata("", "readfile", {
+        p = path,
+        inter = internal or false
+    })
 
-		data = data or ""
+    return BASE64DECODE(result)
+end
 
-		savedFiles[path] = data
+fs.writefile = function(path, data, internal)
+    assert(type(path) == "string", "writefile expected string path")
 
-		local result = nukedata("", "writefile", {
-			p = path,
-			c = BASE64ENCODE(data),
-			inter = internal or false
-		})
+    data = data or ""
 
-		return result
-	end,
-	appendfile = function(path, data, internal)
-		assert(type(path) == "string", "appendfile expected string path")
+    if savedFiles then savedFiles[path] = data end
 
-		if not env.isfile(path) then
-			return env.writefile(path, data, internal)
-		end
+    local result = nukedata("", "writefile", {
+        p = path,
+        c = BASE64ENCODE(data),
+        inter = internal or false
+    })
 
-		data = data or ""
+    return result
+end
 
-		savedFiles[path] = data
+fs.appendfile = function(path, data, internal)
+    assert(type(path) == "string", "appendfile expected string path")
 
-		local result = nukedata("", "appendfile", {
-			p = path,
-			c = BASE64ENCODE(data),
-			inter = internal or false
-		})
+    if not fs.isfile(path, internal) then
+        return fs.writefile(path, data, internal)
+    end
 
-		return result
-	end,
-	isfile = function(path, internal)
-		assert(type(path) == "string", "isfile expected string path")
+    data = data or ""
 
-		local result = nukedata("", "isfile", {
-			p = path,
-			inter = internal or false
-		})
+    if savedFiles then savedFiles[path] = data end
 
-		return result == "true"
-	end,
-	isfolder = function(path, internal)
-		assert(type(path) == "string", "isfolder expected string path")
+    local result = nukedata("", "appendfile", {
+        p = path,
+        c = BASE64ENCODE(data),
+        inter = internal or false
+    })
 
-		local result = nukedata("", "isfolder", {
-			p = path,
-			inter = internal or false
-		})
+    return result
+end
 
-		return result == "true"
-	end,
-	makefolder = function(path, internal)
-		assert(type(path) == "string", "makefolder expected string path")
+fs.isfile = function(path, internal)
+    assert(type(path) == "string", "isfile expected string path")
 
-		local result = nukedata("", "makefolder", {
-			p = path,
-			inter = internal or false
-		})
+    local result = nukedata("", "isfile", {
+        p = path,
+        inter = internal or false
+    })
 
-		return result
-	end,
-	delfile = function(path, internal)
-		assert(type(path) == "string", "delfile expected string path")
-		assert(fs.isfile(path, internal), "delfile expected an existed file")
+    return result == "true"
+end
 
-		local result = nukedata("", "delfile", {
-			p = path,
-			inter = internal or false
-		})
+fs.isfolder = function(path, internal)
+    assert(type(path) == "string", "isfolder expected string path")
 
-		return result
-	end,
-	delfolder = function(path, internal)
-		assert(type(path) == "string", "delfolder expected string path")
-		assert(fs.isfolder(path, internal), "delfolder expected an existed folder")
+    local result = nukedata("", "isfolder", {
+        p = path,
+        inter = internal or false
+    })
 
-		savedFiles[path] = nil
+    return result == "true"
+end
 
-		local result = nukedata("", "delfolder", {
-			p = path,
-			inter = internal or false
-		})
+fs.makefolder = function(path, internal)
+    assert(type(path) == "string", "makefolder expected string path")
 
-		return result
-	end,
-	listfiles = function(path: string, internal)
-		local result = nukedata("", "listfiles", {
-			p = (path or "default"),
-			inter = internal or false
-		})
+    local result = nukedata("", "makefolder", {
+        p = path,
+        inter = internal or false
+    })
 
-		return hs:JSONDecode(result)
-	end,
-	listfolders = function(path, internal)
-		assert(type(path) == "string", "listfolders expected string path")
+    return result
+end
 
-		local result = nukedata("", "listfolders", {
-			p = path,
-			inter = internal or false
-		})
+fs.delfile = function(path, internal)
+    assert(type(path) == "string", "delfile expected string path")
+    assert(fs.isfile(path, internal), "delfile expected an existed file")
 
-		return result
-	end,
-	loadfile = function(path, internal)
-		assert(type(path) == "string", "loadfile expected string path")
+    local result = nukedata("", "delfile", {
+        p = path,
+        inter = internal or false
+    })
 
-		local source = fs.readfile(path, internal)
+    return result
+end
 
-		if not source or source == "" then
-			error("loadfile: file not found or empty: " .. path)
-		end
+fs.delfolder = function(path, internal)
+    assert(type(path) == "string", "delfolder expected string path")
+    assert(fs.isfolder(path, internal), "delfolder expected an existed folder")
 
-		return env.loadstring(source)
-	end,
-	dofile = function(path, internal)
-		assert(type(path) == "string", "dofile expected string path")
-		return env.loadfile(path, internal)()
-	end
-}
+    if savedFiles then savedFiles[path] = nil end
+
+    local result = nukedata("", "delfolder", {
+        p = path,
+        inter = internal or false
+    })
+
+    return result
+end
+
+fs.listfiles = function(path, internal)
+    local result = nukedata("", "listfiles", {
+        p = (path or "default"),
+        inter = internal or false
+    })
+
+    return hs:JSONDecode(result)
+end
+
+fs.listfolders = function(path, internal)
+    assert(type(path) == "string", "listfolders expected string path")
+
+    local result = nukedata("", "listfolders", {
+        p = path,
+        inter = internal or false
+    })
+
+    return result
+end
+
+fs.loadfile = function(path, internal)
+    assert(type(path) == "string", "loadfile expected string path")
+
+    local source = fs.readfile(path, internal)
+
+    if not source or source == "" then
+        error("loadfile: file not found or empty: " .. path)
+    end
+
+    return env.loadstring(source)
+end
+
+fs.dofile = function(path, internal)
+    assert(type(path) == "string", "dofile expected string path")
+    return fs.loadfile(path, internal)()
+end
 
 env.readfile = function(path)
 	return fs.readfile(path, false)
