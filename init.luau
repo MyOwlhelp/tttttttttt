@@ -61,6 +61,13 @@ local fakeUpvalueCache = setmetatable({}, { __mode = "k" })
 
 local savedFiles = setmetatable({}, { __mode = "k" })
 
+local Executions = setmetatable({}, { __mode = "k" })
+
+local LastExecution = ""
+local QUEUE_FILE = "teleport_queue.json"
+
+local PollingRate = 1
+
 local clock = 0
 local fpscap = math.huge
 
@@ -397,158 +404,187 @@ env.consoledestroy = env.rconsoledestroy
 env.consoleinput = env.rconsoleinput
 env.consoleprint = env.rconsoleprint
 
--- readfile: sends key "p", returns raw string
-env.readfile = function(path)
-	assert(type(path) == "string", "readfile expected string path")
-	assert(env.isfile(path), "readfile expected an existed file")
+local fs = {
+	readfile = function(path, internal)
+		assert(type(path) == "string", "readfile expected string path")
+		assert(fs.isfile(path, internal), "readfile expected an existed file")
 
-	local result = nukedata("", "readfile", {
-		p = path
-	})
+		local result = nukedata("", "readfile", {
+			p = path,
+			inter = internal or false
+		})
 
-	-- result is a string (file contents) or "" on error
-	return BASE64DECODE(result)
-end
+		return BASE64DECODE(result)
+	end,
+	writefile = function(path, data, internal)
+		assert(type(path) == "string", "writefile expected string path")
 
--- writefile: send path as "p", content as "c"
-env.writefile = function(path, data)
-	assert(type(path) == "string", "writefile expected string path")
-	--assert(type(data) == "string", "writefile expected string data")
+		data = data or ""
 
-	data = data or ""
+		savedFiles[path] = data
 
-	savedFiles[path] = data
+		local result = nukedata("", "writefile", {
+			p = path,
+			c = BASE64ENCODE(data),
+			inter = internal or false
+		})
 
-	local result = nukedata("", "writefile", {
-		p = path,
-		c = BASE64ENCODE(data)
-	})
+		return result
+	end,
+	appendfile = function(path, data, internal)
+		assert(type(path) == "string", "appendfile expected string path")
 
-	-- returns "" on success, or "error: ..." on failure
-	return result
-end
+		if not env.isfile(path) then
+			return env.writefile(path, data, internal)
+		end
 
--- appendfile: send path as "p", content as "c"
-env.appendfile = function(path, data)
-	assert(type(path) == "string", "appendfile expected string path")
-	--assert(env.isfile(path), "appendfile expected an existed file")
+		data = data or ""
 
-	--assert(type(data) == "string", "appendfile expected string data")
+		savedFiles[path] = data
 
-	if not env.isfile(path) then
-		return env.writefile(path, data)
+		local result = nukedata("", "appendfile", {
+			p = path,
+			c = BASE64ENCODE(data),
+			inter = internal or false
+		})
+
+		return result
+	end,
+	isfile = function(path, internal)
+		assert(type(path) == "string", "isfile expected string path")
+
+		local result = nukedata("", "isfile", {
+			p = path,
+			inter = internal or false
+		})
+
+		return result == "true"
+	end,
+	isfolder = function(path, internal)
+		assert(type(path) == "string", "isfolder expected string path")
+
+		local result = nukedata("", "isfolder", {
+			p = path,
+			inter = internal or false
+		})
+
+		return result == "true"
+	end,
+	makefolder = function(path, internal)
+		assert(type(path) == "string", "makefolder expected string path")
+
+		local result = nukedata("", "makefolder", {
+			p = path,
+			inter = internal or false
+		})
+
+		return result
+	end,
+	delfile = function(path, internal)
+		assert(type(path) == "string", "delfile expected string path")
+		assert(fs.isfile(path, internal), "delfile expected an existed file")
+
+		local result = nukedata("", "delfile", {
+			p = path,
+			inter = internal or false
+		})
+
+		return result
+	end,
+	delfolder = function(path, internal)
+		assert(type(path) == "string", "delfolder expected string path")
+		assert(fs.isfolder(path, internal), "delfolder expected an existed folder")
+
+		savedFiles[path] = nil
+
+		local result = nukedata("", "delfolder", {
+			p = path,
+			inter = internal or false
+		})
+
+		return result
+	end,
+	listfiles = function(path: string, internal)
+		local result = nukedata("", "listfiles", {
+			p = (path or "default"),
+			inter = internal or false
+		})
+
+		return hs:JSONDecode(result)
+	end,
+	listfolders = function(path, internal)
+		assert(type(path) == "string", "listfolders expected string path")
+
+		local result = nukedata("", "listfolders", {
+			p = path,
+			inter = internal or false
+		})
+
+		return result
+	end,
+	loadfile = function(path, internal)
+		assert(type(path) == "string", "loadfile expected string path")
+
+		local source = fs.readfile(path, internal)
+
+		if not source or source == "" then
+			error("loadfile: file not found or empty: " .. path)
+		end
+
+		return env.loadstring(source)
+	end,
+	dofile = function(path, internal)
+		assert(type(path) == "string", "dofile expected string path")
+		return env.loadfile(path, internal)()
 	end
+}
 
-	data = data or ""
-
-	savedFiles[path] = data
-
-	local result = nukedata("", "appendfile", {
-		p = path,
-		c = BASE64ENCODE(data)
-	})
-
-	return result
+env.readfile = function(path)
+	return fs.readfile(path, false)
 end
 
--- isfile: send "p", check returned string ("true" or "false")
+env.writefile = function(path, data)
+	return fs.writefile(path, data, false)
+end
+
+env.appendfile = function(path, data)
+	return fs.appendfile(path, data, false)
+end
+
 env.isfile = function(path)
-	assert(type(path) == "string", "isfile expected string path")
-
-	local result = nukedata("", "isfile", {
-		p = path
-	})
-
-	-- C++ returns "true" or "false" (strings). Compare to "true"
-	return result == "true"
+	return fs.isfile(path, false)
 end
 
--- isfolder: same as isfile
 env.isfolder = function(path)
-	assert(type(path) == "string", "isfolder expected string path")
-
-	local result = nukedata("", "isfolder", {
-		p = path
-	})
-
-	return result == "true"
+	return fs.isfolder(path, false)
 end
 
--- makefolder: use "p"
 env.makefolder = function(path)
-	assert(type(path) == "string", "makefolder expected string path")
-
-	local result = nukedata("", "makefolder", {
-		p = path
-	})
-
-	return result
+	return fs.makefolder(path, false)
 end
 
--- delfile/delfolder: keep as-is but use "p"
 env.delfile = function(path)
-	assert(type(path) == "string", "delfile expected string path")
-	assert(env.isfile(path), "delfile expected an existed file")
-
-	local result = nukedata("", "delfile", {
-		p = path
-	})
-
-	return result
+	return fs.delfile(path, false)
 end
 
 env.delfolder = function(path)
-	assert(type(path) == "string", "delfolder expected string path")
-	assert(env.isfolder(path), "delfolder expected an existed folder")
-
-	savedFiles[path] = nil
-
-	local result = nukedata("", "delfolder", {
-		p = path
-	})
-
-	return result
+	return fs.delfolder(path, false)
 end
 
--- listfiles/listfolders: use "p" and return JSON string
 env.listfiles = function(path: string)
-	--assert(type(path) == "string", "listfiles expected string")
-
-	local result = nukedata("", "listfiles", {
-		p = (path or "default")
-	})
-
-	return hs:JSONDecode(result) -- should be array/table
+	return fs.listfiles(path, false)
 end
 
 env.listfolders = function(path)
-	assert(type(path) == "string", "listfolders expected string path")
-
-	local result = nukedata("", "listfolders", {
-		p = path
-	})
-
-	return result
+	return fs.listfolders(path, false)
 end
 
--- loadfile/dofile: they call readfile internally, so make sure readfile sends "p"
 env.loadfile = function(path)
-	assert(type(path) == "string", "loadfile expected string path")
-
-	local source = env.readfile(path)
-
-	if not source or source == "" then
-		error("loadfile: file not found or empty: " .. path)
-	end
-
-	return env.loadstring(source)
+	return fs.loadfile(path, false)
 end
 
 env.dofile = function(path)
-	assert(type(path) == "string", "dofile expected string path")
-
-	local chunk = env.loadfile(path)
-	return chunk()
+	return fs.dofile(path, false)
 end
 
 --[[env.getcustomasset = function(path)
@@ -2145,69 +2181,83 @@ env.isexecutorclosure = function(func)
 end
 env.isourclosure = env.isexecutorclosure
 
--- listener
+-- Execution Helper
 
-nukedata("","listen") -- .
+local function ExecuteString(to_execute: string)
+	table.insert(Executions, {
+		Time = os.time(),
+		Script = to_execute 
+	})
 
-local Executions = {}
-local LastExecution = ""
-local PollingRate = 1
-
-task.spawn(function()
-    while true do
-        task.wait(PollingRate)
-        
-        local networkSuccess, res = pcall(nukedata, "", "listen")
-
-        if networkSuccess then
-            if typeof(res) == "table" then
-                if Luma and Luma.Destroy then Luma:Destroy() end
-                break
-            end
-
-            if type(res) == "string" and #res > 1 then
-                if res ~= LastExecution then
-                    LastExecution = res
-                    
-                    table.insert(Executions, {os.time(), res})
-
-                    task.spawn(function()
-                        local func, syntaxErr = env.loadstring(res)
-                        
-                        if func then
-                            local runSuccess, runErr = pcall(func)
-                            if not runSuccess then
-                                env.warn("[Execution Error]:", runErr)
-                            end
-                        else
-                            env.warn("[Syntax Error]:", syntaxErr)
-                        end
-                    end)
-                end
-            end
-        else
-            env.warn("[Network Error]:", res)
-        end
-    end
-end)
-
---[[local test = env.request({
-	Url = "https://raw.githubusercontent.com/MyOwlhelp/tttttttttt/refs/heads/SynX/requiretest.luau",
-	Method = "GET"
-})
-
-if test then
-    print("Status:", test.StatusCode)
-    print("Msg:", test.StatusMessage)
-    print("Body Length:", #tojumptostring(test.Body or ""))
-    print("Body Content:", test.Body)
+	local func, syntaxErr = env.loadstring(to_execute)
+	if not func then
+		env.warn("[Syntax Error]:", syntaxErr)
+		return nil
+	end
+    
+    task.spawn(function()
+    	local success, result = pcall(func)
+    	if not success then
+    		env.warn("[Execution Error]:", result)
+    	end
+    end)
 end
 
-if test and test.Body and test.Body:gsub("^%s*(.-)%s*$", "%1") == "test" then
-	doInfo("Testing Request: Success")
-else
-	doInfo("Testing Request: Failed")
-end]]
+env.queue_on_teleport = function(Source: string)
+	assert(Source and type(Source) == "string", "invalid argument #1 (string expected)", 2)
+	table.insert(Queued_Executions, Source)
+end
+
+plr.OnTeleport:Connect(function(State)
+	if State == Enum.TeleportState.Started or State == Enum.TeleportState.InProgress then
+		if #Queued_Executions > 0 then
+			fs.writefile(QUEUE_FILE, HttpService:JSONEncode(Queued_Executions), true)
+		end
+	end
+end)
+
+if fs.isfile(QUEUE_FILE, true) then
+    local content = fs.readfile(QUEUE_FILE, true)
+    if content and content ~= "" then
+        local success, savedQueue = pcall(function() 
+            return HttpService:JSONDecode(content) 
+        end)
+        
+        if success and type(savedQueue) == "table" then
+            for _, scriptSource in ipairs(savedQueue) do
+                ExecuteString(scriptSource)
+            end
+        end
+        
+        fs.delfile(QUEUE_FILE, true)
+    end
+end
+
+-- Listener
+
+nukedata("", "listen") -- .
+
+task.spawn(function()
+	while true do
+		local networkSuccess, res = pcall(nukedata, "", "listen")
+		if networkSuccess then
+			if typeof(res) == "table" then
+				if Luma and Luma.Destroy then
+					Luma:Destroy()
+				end
+				break
+			end
+
+			if type(res) == "string" and #res > 1 then
+				task.spawn(function()
+					return ExecuteString(res)
+				end)
+			end
+		else
+			env.warn("[Network Error]:", res)
+		end
+	end
+end)
 
 local DrawingApi = env.request({
 	Url = "https://raw.githubusercontent.com/MyOwlhelp/tttttttttt/refs/heads/SynX/Drawing.luau",
