@@ -19,6 +19,8 @@ local oPrint = print
 local oWarn = warn
 local oError = error
 
+local LoadModule = debug.loadmodule or require
+
 local Luma = Instance.new("Folder")
 Luma.Name = "Luma"
 Luma.Parent = cpkgs
@@ -680,7 +682,7 @@ env.loadstring = function(code, chunkname)
 
 	env.setscriptbytecode(Load_Level_3, bytecode)
 
-	local loadSuccess, loadResult = pcall(debug.loadmodule, Load_Level_3)
+	local loadSuccess, loadResult = pcall(LoadModule, Load_Level_3)
 	if not loadSuccess then
 		return nil, (loadResult or "Failed to load module")
 	end
@@ -1343,7 +1345,7 @@ end
 
 env.getscriptclosure = function(module)
 	assert(typeof(module) ~= 'Instance', 'Argument #1 to \'getscriptclosure\' must be an Instance.')
-	return function() return debug.loadmodule(module) end
+	return function() return LoadModule(module) end
 end
 
 env.isscriptable = function(i, p)
