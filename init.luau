@@ -19,7 +19,17 @@ local oPrint = print
 local oWarn = warn
 local oError = error
 
-local LoadModule = debug.loadmodule or require
+local LoadModule
+
+do
+	local ok = false
+	if type(debug) == "table" and type(debug.loadmodule) == "function" then
+		local success = pcall(debug.loadmodule, nil)
+		ok = success == false -- callable but errors normally
+	end
+
+	LoadModule = ok and debug.loadmodule or require
+end
 
 local Luma = Instance.new("Folder")
 Luma.Name = "Luma"
