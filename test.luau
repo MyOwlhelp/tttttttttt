@@ -4096,6 +4096,7 @@ do
 				task.wait() -- wait for server to initialize
 				synsaveinstance()
 			end
+            return true
 		end
 	end
 end
