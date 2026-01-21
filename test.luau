@@ -3618,13 +3618,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		end
 
 		if OPTIONS.ReadMe then
-			-- Server returns: Position, Rotation
-			local CamPos, CamRotation = RemoteF:InvokeServer("CameraCFrame")
-
-			local CameraCFrame
-			if CamPos and CamRotation then
-				CameraCFrame = CFrame.new(CamPos) * CamRotation
-			end
+			local CamPos, CamLook = RemoteF:InvokeServer("CameraCFrame")
 
 			local recoveredInfo = ""
 			if #RecoveredScripts ~= 0 then
@@ -3720,8 +3714,8 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 	Executor: %s
 ]]]=],
 				recoveredInfo,
-				CameraCFrame and "true" or "false",
-				CameraCFrame and tostring(CameraCFrame) or "nil",
+				(CamPos and CamLook) and "true" or "false",
+				(CamPos and CamLook) and string.format("CFrame.lookAt(%s, %s + %s)", tostring(CamPos), tostring(CamPos), tostring(CamLook)) or "nil",
 				service.HttpService:JSONEncode(OPTIONS),
 				os.clock() - elapse_t,
 				DateTime.now():FormatUniversalTime("LL LTS", "en-gb"),
