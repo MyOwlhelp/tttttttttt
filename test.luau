@@ -3618,98 +3618,110 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		end
 
 		if OPTIONS.ReadMe then
-			local CameraCFrame = RemoteF:InvokeServer("CameraCFrame")
+			-- Server returns: Position, Rotation
+			local CamPos, CamRotation = RemoteF:InvokeServer("CameraCFrame")
+
+			local CameraCFrame
+			if CamPos and CamRotation then
+				CameraCFrame = CFrame.new(CamPos) * CamRotation
+			end
 
 			local recoveredInfo = ""
 			if #RecoveredScripts ~= 0 then
 				recoveredInfo = string.format(
-					"\t\tIMPORTANT: Original Source of these Scripts was Recovered: %s\n",
+					"\t\tIMPORTANT: The original source of the following scripts was recovered:\n\t\t%s\n",
 					service.HttpService:JSONEncode(RecoveredScripts)
 				)
 			end
 
 			local readme = string.format([=[
 --[[
+%s
+	Synapse X Server Side.
+
+	If you did not save in binary format (.rbxl), it is strongly recommended to save the game immediately.
+	This allows Roblox Studio to preserve certain property values and take full advantage of the binary format,
+	especially when IgnoreDefaultProperties was enabled.
+
+	To save in binary format:
+	FILE → Save to File As → Ensure the file name ends with .rbxl → Save
+
+	If UnionOperation or MeshPart collisions do not work, run the following script in the Studio Command Bar:
+
+	--------------------------------
+
+	local CoreGui = game:GetService("CoreGui")
+	local DefaultFidelity = Enum.CollisionFidelity.Default
+
+	for _, v in game:GetDescendants() do
+		if v:IsA("TriangleMeshPart") and not v:IsDescendantOf(CoreGui) then
+			v.CollisionFidelity = DefaultFidelity
+		end
+	end
+
+	print("Done")
+
+	--------------------------------
+
+	If there are no children in ServerScriptService or ServerStorage, run the script below
+	in the Studio Command Bar to restore them:
+
+	--------------------------------
+
+	local Lighting = game:GetService("Lighting")
+	local ServerStorage = game:GetService("ServerStorage")
+	local ServerScriptService = game:GetService("ServerScriptService")
+
+	local SynRemotes = Lighting:FindFirstChild("SynRemotes")
+	local SavedServers = Lighting:FindFirstChild("...SynX_SaveInstances...")
+
+	if not SavedServers then
+		return
+	end
+
+	local SavedServerStorage = SavedServers:FindFirstChild("ServerStorage")
+	local SavedServerScriptService = SavedServers:FindFirstChild("ServerScriptService")
+
+	for _, child in SavedServerStorage:GetChildren() do
+		child.Parent = ServerStorage
+	end
+
+	for _, child in SavedServerScriptService:GetChildren() do
+		child.Parent = ServerScriptService
+	end
+
+	SavedServers:Destroy()
+
+	if SynRemotes then
+		SynRemotes:Destroy()
+	end
+
+	local cam = workspace:FindFirstChild("Camera")
+	if cam and %s then
+		cam.CFrame = %s
+	end
+
+	--------------------------------
+
+	If you cannot move the camera, run the following command in the Studio Command Bar:
+
+	workspace.CurrentCamera.CameraType = Enum.CameraType.Fixed
+
+	Alternatively, you may delete the Camera instance.
+
+	This file was generated using the following settings:
 	%s
-		Synapse X Server Side.
 
-		If you didn't save in Binary (rbxl) - it's recommended to save the game right away to take advantage of the binary format & to preserve values of certain properties if you used IgnoreDefaultProperties setting (as they might change in the future).
-		You can do that by going to FILE -> Save to File As -> Make sure File Name ends with .rbxl -> Save
-
-		If Union and MeshPart collisions don't work, run the script below in the Studio Command Bar:
-					
-		--------------------------------
-					
-		local C = game:GetService("CoreGui")
-		local D = Enum.CollisionFidelity.Default
-					
-		for _, v in game:GetDescendants() do
-			if v:IsA("TriangleMeshPart") and not v:IsDescendantOf(C) then
-				v.CollisionFidelity = D
-			end
-		end
-		
-		print("Done")
-					
-		--------------------------------
-
-		If there is no childs in ServerScriptService and ServerStorage, run this script in the Studio Command Bar:
-
-		--------------------------------
-
-		local Lighting = game:GetService("Lighting")
-		local ServerStorage = game:GetService("ServerStorage")
-		local ServerScriptService = game:GetService("ServerScriptService")
-
-		local SynRemotes = Lighting:FindFirstChild("SynRemotes")
-
-		local SavedServers = Lighting:FindFirstChild("...SynX_SaveInstances...")
-		if not SavedServers then
-			return
-		end
-
-		local SavedServerStorage = SavedServers:FindFirstChild("ServerStorage")
-		local SavedServerScriptService = SavedServers:FindFirstChild("ServerScriptService")
-
-		for _, child in pairs(SavedServerStorage:GetChildren()) do
-			child.Parent = ServerStorage
-		end
-
-		for _, child in pairs(SavedServerScriptService:GetChildren()) do
-			child.Parent = ServerScriptService
-		end
-
-		local cam = workspace:FindFirstChild("Camera")
-		if cam then
-			cam.CFrame = %s
-		end
-
-		SavedServers:Destroy()
-
-		if SynRemotes then
-			SynRemotes:Destroy()
-		end
-
-		--------------------------------
-
-		If you can't move the Camera, run this script in the Studio Command Bar:
-				
-		workspace.CurrentCamera.CameraType = Enum.CameraType.Fixed
-				
-		Or Destroy the Camera.
-
-		This file was generated with the following settings:
-		%s
-
-		Elapsed time: %.3f
-		Date (UTC): %s
-		PlaceId: %d
-		PlaceVersion: %d
-		Client Version: %s
-		Executor: %s
+	Elapsed time: %.3f seconds
+	Date (UTC): %s
+	PlaceId: %d
+	PlaceVersion: %d
+	Client Version: %s
+	Executor: %s
 ]]]=],
 				recoveredInfo,
-				tostring(CameraCFrame),
+				CameraCFrame and "true" or "false",
+				CameraCFrame and tostring(CameraCFrame) or "nil",
 				service.HttpService:JSONEncode(OPTIONS),
 				os.clock() - elapse_t,
 				DateTime.now():FormatUniversalTime("LL LTS", "en-gb"),
