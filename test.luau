@@ -3657,6 +3657,8 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
         local ServerStorage = game:GetService("ServerStorage")
         local ServerScriptService = game:GetService("ServerScriptService")
 
+        local SynRemotes = Lighting:FindFirstChild("SynRemotes")
+
         local SavedServers = Lighting:FindFirstChild("...SynX_SaveInstances...")
         if not SavedServers then
             return
@@ -3674,6 +3676,10 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
         end
 
         SavedServers:Destroy()
+
+        if SynRemotes then
+            SynRemotes:Destroy()
+        end
 
         --------------------------------
 
