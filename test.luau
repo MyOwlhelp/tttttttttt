@@ -1,6 +1,6 @@
 --!native
+--!nonstrict
 --!optimize 2
---!divine-intellect
 
 -- https://luau.github.io/UniversalSynSaveInstance/api/SynSaveInstance
 
@@ -244,9 +244,9 @@ end
 local Remotes = game:GetService("Lighting"):FindFirstChild("SynRemotes")
 local RemoteF;
 do
-    if Remotes then
-        RemoteF = Remotes:FindFirstChild("Save___Instance") 
-    end
+	if Remotes then
+		RemoteF = Remotes:FindFirstChild("Save___Instance") 
+	end
 end
 
 local CLIENT_VERSION = tonumber(string.split(version(), ".")[2]) or 9e9 -- Velocity temp fix
@@ -850,7 +850,7 @@ XML_Descriptors = {
 			.. "</R21><R22>"
 			.. R22
 			.. "</R22>",
-			"CoordinateFrame"
+		"CoordinateFrame"
 	end,
 	-- CFrameQuat = function(raw) -- ? This will probably never release as it's not even used anywhere naturally, but there are hints it does exist as a DataType
 	-- 	local X, Y, Z, R00, R01, R02, R10, R11, R12, R20, R21, R22 = raw:GetComponents()
@@ -949,24 +949,24 @@ XML_Descriptors = {
 		return "<faces>" .. __COUNT_BITS(raw.Right, raw.Top, raw.Back, raw.Left, raw.Bottom, raw.Front) .. "</faces>"
 	end,
 	Font = 636 < CLIENT_VERSION
-			and function(raw)
-				-- TODO (OPTIONAL ELEMENT): Figure out how to determine (ContentId) <CachedFaceId><url>rbxasset://fonts/GothamSSm-Medium.otf</url></CachedFaceId>
+		and function(raw)
+			-- TODO (OPTIONAL ELEMENT): Figure out how to determine (ContentId) <CachedFaceId><url>rbxasset://fonts/GothamSSm-Medium.otf</url></CachedFaceId>
 				--[[
 		? game:GetService("TextService"):GetFontMemoryData()
 		? rbxasset://fonts/families/{Enum.Font.BuilderSans.Name}.json
 		]]
 
-				local ok_w, weight = pcall(index, raw, "Weight")
-				local ok_s, style = pcall(index, raw, "Style")
+			local ok_w, weight = pcall(index, raw, "Weight")
+			local ok_s, style = pcall(index, raw, "Style")
 
-				return "<Family>"
-					.. XML_Descriptors.ContentId(raw.Family)
-					.. "</Family><Weight>"
-					.. (ok_w and XML_Descriptors.EnumItem(weight) or "")
-					.. "</Weight><Style>"
-					.. (ok_s and style.Name or "") -- Weird but this field accepts .Name of enum instead..
-					.. "</Style>"
-			end
+			return "<Family>"
+			.. XML_Descriptors.ContentId(raw.Family)
+			.. "</Family><Weight>"
+			.. (ok_w and XML_Descriptors.EnumItem(weight) or "")
+			.. "</Weight><Style>"
+			.. (ok_s and style.Name or "") -- Weird but this field accepts .Name of enum instead..
+			.. "</Style>"
+		end
 		or function(raw)
 			local FontString = tostring(raw)
 
@@ -974,12 +974,12 @@ XML_Descriptors = {
 			local EmptyStyle = string_find(FontString, "Style =  }")
 
 			return "<Family>"
-				.. XML_Descriptors.ContentId(raw.Family)
-				.. "</Family><Weight>"
-				.. (EmptyWeight and "" or XML_Descriptors.EnumItem(raw.Weight))
-				.. "</Weight><Style>"
-				.. (EmptyStyle and "" or raw.Style.Name) -- Weird but this field accepts .Name of enum instead..
-				.. "</Style>"
+			.. XML_Descriptors.ContentId(raw.Family)
+			.. "</Family><Weight>"
+			.. (EmptyWeight and "" or XML_Descriptors.EnumItem(raw.Weight))
+			.. "</Weight><Style>"
+			.. (EmptyStyle and "" or raw.Style.Name) -- Weird but this field accepts .Name of enum instead..
+			.. "</Style>"
 		end,
 	NetAssetRef = nil,
 	NumberRange = function(raw) -- tostring(raw) also works
@@ -1029,7 +1029,7 @@ XML_Descriptors = {
 		local CustomPhysics = "<CustomPhysics>" .. XML_Descriptors.bool(raw and true or false) .. "</CustomPhysics>"
 
 		return raw
-				and CustomPhysics .. "<Density>" .. raw.Density .. "</Density><Friction>" .. raw.Friction .. "</Friction><Elasticity>" .. raw.Elasticity .. "</Elasticity><FrictionWeight>" .. raw.FrictionWeight .. "</FrictionWeight><ElasticityWeight>" .. raw.ElasticityWeight .. "</ElasticityWeight><AcousticAbsorption>" .. raw.AcousticAbsorption .. "</AcousticAbsorption>"
+			and CustomPhysics .. "<Density>" .. raw.Density .. "</Density><Friction>" .. raw.Friction .. "</Friction><Elasticity>" .. raw.Elasticity .. "</Elasticity><FrictionWeight>" .. raw.FrictionWeight .. "</FrictionWeight><ElasticityWeight>" .. raw.ElasticityWeight .. "</ElasticityWeight><AcousticAbsorption>" .. raw.AcousticAbsorption .. "</AcousticAbsorption>"
 			or CustomPhysics
 	end,
 	-- ProtectedString = function(raw) return tostring(raw), "ProtectedString" end,
@@ -2017,7 +2017,7 @@ do
 									preferredDescriptorProp == nil
 									or (
 										preferredDescriptorProp.MemberType == "Property"
-										and ValueType_Name ~= preferredDescriptorProp.ValueType
+											and ValueType_Name ~= preferredDescriptorProp.ValueType
 									)
 								then -- For ex. (if they were notscriptable) CollisionGroupId (int) -> CollisionGroup (string)
 									PreferredDescriptorName = nil
@@ -2046,26 +2046,26 @@ do
 							local accessFunc = PreferredDescriptorName
 								and (
 									preferredDescriptorProp.MemberType == "Property"
-										and function(instance)
-											return instance[PreferredDescriptorName]
-										end
+									and function(instance)
+										return instance[PreferredDescriptorName]
+									end
 									or function(instance) -- Assume MemberType is "Function"
 										return instance[PreferredDescriptorName](instance)
 									end
 								)
 
 							Property.Fallback = NotScriptableFix
-									and (type(NotScriptableFix) == "function" and NotScriptableFix or accessFunc and function(
-										instance
-									)
-										local o, r = pcall(accessFunc, instance)
-										if o then
-											return r
-										end
-										return instance[NotScriptableFix]
-									end or function(instance)
-										return instance[NotScriptableFix]
-									end)
+								and (type(NotScriptableFix) == "function" and NotScriptableFix or accessFunc and function(
+									instance
+								)
+								local o, r = pcall(accessFunc, instance)
+								if o then
+									return r
+								end
+								return instance[NotScriptableFix]
+							end or function(instance)
+								return instance[NotScriptableFix]
+							end)
 								or accessFunc
 
 							ClassProperties[ClassProperties_size] = Property
@@ -2096,8 +2096,8 @@ end
 local GLOBAL_ENV = getgenv and getgenv() or _G or shared
 
 --[=[
-    @class SynSaveInstance
-    Represents the options for saving instances with custom settings using the synsaveinstance function.
+	@class SynSaveInstance
+	Represents the options for saving instances with custom settings using the synsaveinstance function.
 ]=]
 
 --- @interface CustomOptions table
@@ -2500,9 +2500,9 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 
 	local DecompileIgnore, IgnoreList, IgnoreProperties, NotCreatableFixes =
 		ArrayToDict(OPTIONS.DecompileIgnore, true),
-		ArrayToDict(OPTIONS.IgnoreList, true),
-		ArrayToDict(OPTIONS.IgnoreProperties),
-		ArrayToDict(OPTIONS.NotCreatableFixes, true, "Folder")
+	ArrayToDict(OPTIONS.IgnoreList, true),
+	ArrayToDict(OPTIONS.IgnoreProperties),
+	ArrayToDict(OPTIONS.NotCreatableFixes, true, "Folder")
 
 	local __DEBUG_MODE = OPTIONS.__DEBUG_MODE
 
@@ -2951,7 +2951,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		return result == nil
 			or result == "can't get value"
 			or type(result) == "string"
-				and (category == "Enum" or string_find(result, "Unable to get property " .. propertyName))
+			and (category == "Enum" or string_find(result, "Unable to get property " .. propertyName))
 	end
 
 	local __BREAK = "__BREAK" .. service.HttpService:GenerateGUID(false)
@@ -3329,7 +3329,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 										Fix
 										and (
 											PropertyName == "PlayerToHideFrom"
-											or ValueType ~= "Instance" and ValueType ~= Fix
+												or ValueType ~= "Instance" and ValueType ~= Fix
 										)
 									then -- * To avoid errors
 										continue
@@ -3420,8 +3420,8 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 											if
 												isLocalScript and instance.RunContext == Enum.RunContext.Server
 												or not isLocalScript
-													and instance:IsA("Script")
-													and instance.RunContext ~= Enum.RunContext.Client
+												and instance:IsA("Script")
+												and instance.RunContext ~= Enum.RunContext.Client
 											then
 												value = "-- [FilteringEnabled] Server Scripts are IMPOSSIBLE to save" -- TODO: Could be not just server scripts in the future
 											else
@@ -3450,7 +3450,7 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 											-- * It can be empty, because it's optional
 											-- ? Though why even save it if it's empty considering it's optional
 											continue
-										-- value, tag = "", ValueType
+											-- value, tag = "", ValueType
 										else
 											value, tag = ReturnValueAndTag(raw, ValueType, Descriptor)
 										end
@@ -3618,93 +3618,113 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		end
 
 		if OPTIONS.ReadMe then
-			save_extra(
-				"README",
-				nil,
-				nil,
-				"Script",
-				"--[[\n"
-					.. (#RecoveredScripts ~= 0 and "\t\tIMPORTANT: Original Source of these Scripts was Recovered: " .. service.HttpService:JSONEncode(
-						RecoveredScripts
-					) .. "\n" or "")
-					.. [[
+			local CameraCFrame = RemoteF:InvokeServer("CameraCFrame")
+
+			local recoveredInfo = ""
+			if #RecoveredScripts ~= 0 then
+				recoveredInfo = string.format(
+					"\t\tIMPORTANT: Original Source of these Scripts was Recovered: %s\n",
+					service.HttpService:JSONEncode(RecoveredScripts)
+				)
+			end
+
+			local readme = string.format([=[
+--[[
+	%s
 		Synapse X Server Side.
 
 		If you didn't save in Binary (rbxl) - it's recommended to save the game right away to take advantage of the binary format & to preserve values of certain properties if you used IgnoreDefaultProperties setting (as they might change in the future).
 		You can do that by going to FILE -> Save to File As -> Make sure File Name ends with .rbxl -> Save
 
 		If Union and MeshPart collisions don't work, run the script below in the Studio Command Bar:
-				
-        --------------------------------
-				
+					
+		--------------------------------
+					
 		local C = game:GetService("CoreGui")
 		local D = Enum.CollisionFidelity.Default
-				
+					
 		for _, v in game:GetDescendants() do
 			if v:IsA("TriangleMeshPart") and not v:IsDescendantOf(C) then
 				v.CollisionFidelity = D
 			end
 		end
+		
 		print("Done")
-				
-        --------------------------------
+					
+		--------------------------------
 
-        If there is no childs in ServerScriptService and ServerStorage, run this script in the Studio Command Bar:
+		If there is no childs in ServerScriptService and ServerStorage, run this script in the Studio Command Bar:
 
-        --------------------------------
+		--------------------------------
 
-        local Lighting = game:GetService("Lighting")
-        local ServerStorage = game:GetService("ServerStorage")
-        local ServerScriptService = game:GetService("ServerScriptService")
+		local Lighting = game:GetService("Lighting")
+		local ServerStorage = game:GetService("ServerStorage")
+		local ServerScriptService = game:GetService("ServerScriptService")
 
-        local SynRemotes = Lighting:FindFirstChild("SynRemotes")
+		local SynRemotes = Lighting:FindFirstChild("SynRemotes")
 
-        local SavedServers = Lighting:FindFirstChild("...SynX_SaveInstances...")
-        if not SavedServers then
-            return
-        end
+		local SavedServers = Lighting:FindFirstChild("...SynX_SaveInstances...")
+		if not SavedServers then
+			return
+		end
 
-        local SavedServerStorage = SavedServers:FindFirstChild("ServerStorage")
-        local SavedServerScriptService = SavedServers:FindFirstChild("ServerScriptService")
+		local SavedServerStorage = SavedServers:FindFirstChild("ServerStorage")
+		local SavedServerScriptService = SavedServers:FindFirstChild("ServerScriptService")
 
-        for i, child in pairs(SavedServerStorage:GetChildren()) do
-            child.Parent = ServerStorage
-        end
+		for _, child in pairs(SavedServerStorage:GetChildren()) do
+			child.Parent = ServerStorage
+		end
 
-        for i, child in pairs(SavedServerScriptService:GetChildren()) do
-            child.Parent = ServerScriptService
-        end
+		for _, child in pairs(SavedServerScriptService:GetChildren()) do
+			child.Parent = ServerScriptService
+		end
 
-        SavedServers:Destroy()
+		local cam = workspace:FindFirstChild("Camera")
+		if cam then
+			cam.CFrame = %s
+		end
 
-        if SynRemotes then
-            SynRemotes:Destroy()
-        end
+		SavedServers:Destroy()
 
-        --------------------------------
+		if SynRemotes then
+			SynRemotes:Destroy()
+		end
+
+		--------------------------------
 
 		If you can't move the Camera, run this script in the Studio Command Bar:
-			
+				
 		workspace.CurrentCamera.CameraType = Enum.CameraType.Fixed
-		
+				
 		Or Destroy the Camera.
 
 		This file was generated with the following settings:
-		]]
-					.. service.HttpService:JSONEncode(OPTIONS)
-					.. "\n\n\t\tElapsed time: "
-					.. os.clock() - elapse_t
-					.. " Date (UTC): "
-					.. DateTime.now():FormatUniversalTime("LL LTS", "en-gb")
-					.. " PlaceId: "
-					.. game.PlaceId
-					.. " PlaceVersion: "
-					.. game.PlaceVersion
-					.. " Client Version: "
-					.. version()
-					.. " Executor: "
-					.. (identify_executor and table.concat({ identify_executor() }, " ") or "Unknown")
-					.. "\n]]"
+		%s
+
+		Elapsed time: %.3f
+		Date (UTC): %s
+		PlaceId: %d
+		PlaceVersion: %d
+		Client Version: %s
+		Executor: %s
+]]]=],
+				recoveredInfo,
+				tostring(CameraCFrame),
+				service.HttpService:JSONEncode(OPTIONS),
+				os.clock() - elapse_t,
+				DateTime.now():FormatUniversalTime("LL LTS", "en-gb"),
+				game.PlaceId,
+				game.PlaceVersion,
+				version(),
+				identify_executor and table.concat({ identify_executor() }, " ") or "Unknown"
+			)
+
+			save_extra(
+				"README",
+				nil,
+				nil,
+				"Script",
+				readme
 			)
 		end
 		do
@@ -3985,8 +4005,8 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 				if getconnections then
 					for _, c in getconnections(Idled) do
 						if not pcall(function()
-							c:Disable()
-						end) then
+								c:Disable()
+							end) then
 							pcall(function()
 								c:Disconnect()
 							end)
@@ -4036,12 +4056,12 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 		if StatusText then
 			task.spawn(function()
 				if ok then
-                    RemoteF:InvokeServer("Success")
+					RemoteF:InvokeServer("Done", true)
 					StatusText.Text = string.format("Saved! Time %.3f seconds; Size %s", elapse_t, get_size_format())
 					StatusText.TextColor3 = Color3.new(0, 1)
 					task.wait(Log10 * 2 + ExtraTime)
 				else
-                    RemoteF:InvokeServer("Failed")
+					RemoteF:InvokeServer("Done", false)
 					if Loading then
 						task.cancel(Loading)
 						Loading = nil
@@ -4064,14 +4084,14 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 end
 
 do
-    if RemoteF and RemoteF:IsA("RemoteFunction") then
-        RemoteF.OnClientInvoke = function(r)
-            if r == "Start" then
-                task.wait() -- wait for server to initialize
-                synsaveinstance()
-            end
-        end
-    end
+	if RemoteF and RemoteF:IsA("RemoteFunction") then
+		RemoteF.OnClientInvoke = function(r)
+			if r == "Start" then
+				task.wait() -- wait for server to initialize
+				synsaveinstance()
+			end
+		end
+	end
 end
 
 return synsaveinstance
