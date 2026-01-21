@@ -3692,7 +3692,8 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 
 	local cam = workspace:FindFirstChild("Camera")
 	if cam and %s then
-		cam.CFrame = %s
+		cam.CFrame.Position = %s
+        cam.CFrame.Rotation = %s
 	end
 
 	--------------------------------
@@ -3715,7 +3716,8 @@ local function synsaveinstance(CustomOptions, CustomOptions2)
 ]]]=],
 				recoveredInfo,
 				(CamPos and CamLook) and "true" or "false",
-				(CamPos and CamLook) and string.format("CFrame.lookAt(%s, %s + %s)", tostring(CamPos), tostring(CamPos), tostring(CamLook)) or "nil",
+				(CamPos and CamLook) and string.format("CFrame.new(%s)", tostring(CamPos)) or "nil",
+                (CamPos and CamLook) and string.format("CFrame.lookAt(%s)", tostring(CamLook)) or "nil",
 				service.HttpService:JSONEncode(OPTIONS),
 				os.clock() - elapse_t,
 				DateTime.now():FormatUniversalTime("LL LTS", "en-gb"),
